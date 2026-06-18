@@ -2,11 +2,14 @@ import type { DateFileResolution, QuickMemoSettings } from '../types';
 import type { VaultLike } from '../test/fakeVault';
 import type { DailyNotesConfig } from './obsidianInternal';
 
+export type DateFormatFn = (date: string, format: string) => string;
+
 export class DailyNoteResolver {
   constructor(
     private readonly vault: VaultLike,
     private readonly dailyNotesConfig: DailyNotesConfig | undefined,
     private readonly settings: QuickMemoSettings,
+    private readonly formatFn: DateFormatFn = formatDate,
   ) {}
 
   async resolve(date: string): Promise<DateFileResolution> {
@@ -14,7 +17,7 @@ export class DailyNoteResolver {
     const hasDailyNotesConfig = Boolean(config?.folder || config?.format);
     const folder = trimSlashes(hasDailyNotesConfig ? config?.folder ?? '' : this.settings.fallbackDailyNotesFolder);
     const format = hasDailyNotesConfig ? config?.format ?? this.settings.fallbackDateFormat : this.settings.fallbackDateFormat;
-    const relative = `${formatDate(date, format)}.md`;
+    const relative = `${this.formatFn(date, format)}.md`;
     return {
       date,
       filePath: folder ? `${folder}/${relative}` : relative,

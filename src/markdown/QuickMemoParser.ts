@@ -23,7 +23,11 @@ const LIST_RE = /^- ([0-9]{2}:[0-9]{2}) \[(记录|闪念|待办)\] (.*)$/u;
 const TAG_RE = /(^|\s)(#[\p{L}\p{N}_\-\/]+)/gu;
 
 export class QuickMemoParser {
-  constructor(private readonly heading: string) {}
+  private readonly heading: () => string;
+
+  constructor(heading: string | (() => string)) {
+    this.heading = typeof heading === 'function' ? heading : () => heading;
+  }
 
   parseFile(filePath: string, date: string, markdown: string): ParseResult {
     const lines = markdown.split('\n');
@@ -136,7 +140,7 @@ export class QuickMemoParser {
   }
 
   private findSection(lines: string[]): { start: number; end: number } | undefined {
-    const headingPattern = new RegExp(`^##\\s+${escapeRegExp(this.heading)}\\s*$`, 'u');
+    const headingPattern = new RegExp(`^##\\s+${escapeRegExp(this.heading())}\\s*$`, 'u');
     const startHeading = lines.findIndex((line) => headingPattern.test(line));
     if (startHeading === -1) return undefined;
 

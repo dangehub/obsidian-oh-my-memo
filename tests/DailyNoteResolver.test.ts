@@ -32,4 +32,22 @@ describe('DailyNoteResolver', () => {
     await resolver.ensureDailyNote('2026-06-18');
     expect(await vault.read('Daily Notes/2026-06-18.md')).toBe('# 2026-06-18\nBody\n\n## Quick Memo\n');
   });
+
+  it('uses a custom formatter so year/month subfolders match the Daily Notes config', async () => {
+    const vault = new FakeVault();
+    // Mimic Obsidian moment formatting `YYYY/MM/DD` -> nested year/month folders.
+    const momentLike = (date: string, format: string): string => {
+      const [year, month, day] = date.split('-');
+      return format.replace(/YYYY/gu, year).replace(/MM/gu, month).replace(/DD/gu, day);
+    };
+    const resolver = new DailyNoteResolver(
+      vault,
+      { folder: '日志', format: 'YYYY/MM/DD' },
+      DEFAULT_SETTINGS,
+      momentLike,
+    );
+    const result = await resolver.resolve('2026-06-19');
+    expect(result.filePath).toBe('日志/2026/06/19.md');
+    expect(result.source).toBe('daily-notes');
+  });
 });

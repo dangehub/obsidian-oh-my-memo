@@ -43,7 +43,7 @@ export function renderOverview(root: HTMLElement, state: OverviewState, callback
   const layout = appendDiv(root, 'oqm-layout');
   renderSidebar(appendDiv(layout, 'oqm-sidebar'), state, callbacks);
   renderMain(appendDiv(layout, 'oqm-main'), state, callbacks);
-  renderHeatmap(appendDiv(layout, 'oqm-heatmap'), state.heatmap, callbacks);
+  renderHeatmap(appendDiv(layout, 'oqm-heatmap'), state.heatmap, state.selectedDate, callbacks);
 }
 
 function renderSidebar(container: HTMLElement, state: OverviewState, callbacks: OverviewCallbacks): void {
@@ -53,8 +53,11 @@ function renderSidebar(container: HTMLElement, state: OverviewState, callbacks: 
     avatar.src = state.settings.avatar;
     avatar.alt = state.settings.userName;
   }
-  appendEl(profile, 'h2', '', state.settings.userName);
-  appendEl(profile, 'p', '', state.settings.userSlogan);
+  const profileText = appendDiv(profile, 'oqm-profile-text');
+  appendEl(profileText, 'h2', '', state.settings.userName);
+  appendEl(profileText, 'p', '', state.settings.userSlogan);
+
+  appendDiv(container, 'oqm-section-label', '筛选');
 
   const typeSelect = appendEl(container, 'select', 'oqm-type-filter') as HTMLSelectElement;
   for (const [value, label] of TYPE_FILTER_OPTIONS) {
@@ -78,10 +81,13 @@ function renderSidebar(container: HTMLElement, state: OverviewState, callbacks: 
   search.value = state.filters.text ?? '';
   search.oninput = () => callbacks.onFilterChange({ text: search.value });
 
-  const tags = appendDiv(container, 'oqm-tags');
-  for (const [tag, count] of state.tags) {
-    const button = appendEl(tags, 'button', '', `${tag} ${count}`) as HTMLButtonElement;
-    button.onclick = () => callbacks.onFilterChange({ tag });
+  if (state.tags.length > 0) {
+    appendDiv(container, 'oqm-section-label', '标签');
+    const tags = appendDiv(container, 'oqm-tags');
+    for (const [tag, count] of state.tags) {
+      const button = appendEl(tags, 'button', '', `${tag} ${count}`) as HTMLButtonElement;
+      button.onclick = () => callbacks.onFilterChange({ tag });
+    }
   }
 }
 
@@ -121,7 +127,11 @@ function renderMain(container: HTMLElement, state: OverviewState, callbacks: Ove
 
 function renderRecord(list: HTMLElement, record: QuickMemoRecord, editing: boolean, callbacks: OverviewCallbacks): void {
   const card = appendDiv(list, `oqm-record oqm-record-${record.type}`);
-  appendDiv(card, 'oqm-record-meta', `${record.time} · ${typeLabel(record.type)}`);
+  const meta = appendDiv(card, 'oqm-record-meta');
+  appendEl(meta, 'span', '', record.time);
+  const badge = appendEl(meta, 'span', 'oqm-record-badge') as HTMLElement;
+  badge.textContent = typeLabel(record.type);
+  if (record.type === 'todo') badge.textContent += record.completed ? ' · 已完成' : ' · 未完成';
 
   if (editing) {
     const editType = appendEl(card, 'select', 'oqm-edit-type') as HTMLSelectElement;
@@ -159,15 +169,37 @@ function renderRecord(list: HTMLElement, record: QuickMemoRecord, editing: boole
   (appendEl(actions, 'button', '', '打开源文件') as HTMLButtonElement).onclick = () => callbacks.onOpenSource(record);
 }
 
-function renderHeatmap(container: HTMLElement, heatmap: HeatmapDay[], callbacks: OverviewCallbacks): void {
-  appendEl(container, 'h3', '', '热力图');
-  const grid = appendDiv(container, 'oqm-heatmap-grid');
+function renderHeatmap(container: HTMLElement, heatmap: HeatmapDay[], selectedDate: string, callbacks: OverviewCallbacks): void {
+  const counts = new Map<string, number>();
+  for (const day of heatmap) counts.set(day.date, day.count);
+
+  const [year, month] = selectedDate.split('-').map((part) => Number(part));
+  const firstWeekday = new Date(year, month - 1, 1).getDay(); // 0 = Sunday
+  const daysInMonth = new Date(year, month, 0).getDate();
   const max = Math.max(1, ...heatmap.map((day) => day.count));
-  for (const day of heatmap) {
-    const level = Math.ceil((day.count / max) * 4);
-    const button = appendEl(grid, 'button', `oqm-heatmap-day oqm-heatmap-level-${level}`) as HTMLButtonElement;
-    button.title = `${day.date}: ${day.count} 条`;
-    button.onclick = () => callbacks.onSelectDate(day.date);
+
+  const header = appendDiv(container, 'oqm-heatmap-header');
+  appendEl(header, 'span', 'oqm-heatmap-month', `${year}年${month}月`);
+  appendEl(header, 'span', 'oqm-heatmap-hint', '点击日期查看当天');
+
+  const grid = appendDiv(container, 'oqm-heatmap-grid');
+  for (const weekday of ['日', '一', '二', '三', '四', '五', '六']) {
+    appendDiv(grid, 'oqm-heatmap-dow', weekday);
+  }
+  for (let blank = 0; blank < firstWeekday; blank += 1) {
+    appendDiv(grid, 'oqm-heatmap-blank');
+  }
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const count = counts.get(dateStr) ?? 0;
+    const level = count === 0 ? 0 : Math.min(4, Math.max(1, Math.ceil((count / max) * 4)));
+    const isSelected = dateStr === selectedDate;
+    const button = appendEl(grid, 'button', `oqm-heatmap-day oqm-heatmap-level-${level}${isSelected ? ' is-selected' : ''}`) as HTMLButtonElement;
+    button.type = 'button';
+    button.textContent = String(day);
+    button.title = `${dateStr}: ${count} 条`;
+    button.onclick = () => callbacks.onSelectDate(dateStr);
   }
 }
 

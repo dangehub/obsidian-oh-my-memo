@@ -4,7 +4,6 @@ import { QuickMemoParser } from '../src/markdown/QuickMemoParser';
 
 describe('QuickMemoParser', () => {
   const parser = new QuickMemoParser('Quick Memo');
-
   it('parses records only inside the Quick Memo section', () => {
     const result = parser.parseFile('Daily Notes/2026-06-18.md', '2026-06-18', DAILY_NOTE_WITH_MEMOS);
     expect(result.warnings).toEqual([]);
@@ -95,5 +94,17 @@ describe('QuickMemoParser', () => {
       message: `Duplicate Quick Memo block id: ${id}`,
       raw: result.records[1].raw,
     });
+  });
+
+  it('reads the heading dynamically so settings changes take effect without rebuilding the parser', () => {
+    let heading = 'Quick Memo';
+    const dynamic = new QuickMemoParser(() => heading);
+    const original = '## Quick Memo\n\n- 09:00 [闪念] under old heading #x\n';
+    expect(dynamic.parseFile('Daily Notes/2026-06-18.md', '2026-06-18', original).records).toHaveLength(1);
+
+    heading = 'Memos';
+    const renamed = '## Memos\n\n- 09:00 [闪念] under new heading #x\n';
+    expect(dynamic.parseFile('Daily Notes/2026-06-18.md', '2026-06-18', renamed).records).toHaveLength(1);
+    expect(dynamic.parseFile('Daily Notes/2026-06-18.md', '2026-06-18', original).records).toHaveLength(0);
   });
 });

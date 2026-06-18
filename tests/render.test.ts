@@ -35,7 +35,32 @@ describe('renderOverview', () => {
     expect(root.textContent).toContain('idea #a');
     expect(root.textContent).toContain('#a');
     expect(root.querySelector<HTMLTextAreaElement>('.oqm-input')?.placeholder).toContain('Markdown');
-    expect(root.querySelectorAll('.oqm-heatmap-day')).toHaveLength(1);
+    // Heatmap renders a full current-month calendar (June 2026 = 30 days).
+    expect(root.querySelector('.oqm-heatmap-month')?.textContent).toBe('2026年6月');
+    const dayCells = root.querySelectorAll('.oqm-heatmap-day');
+    expect(dayCells).toHaveLength(30);
+    const recordDay = Array.from(dayCells).find((cell) => cell.textContent === '18');
+    // Single record whose count equals the max -> highest intensity level.
+    expect(recordDay?.classList.contains('oqm-heatmap-level-4')).toBe(true);
+    expect(recordDay?.classList.contains('is-selected')).toBe(true);
+  });
+
+  it('calls onSelectDate when a heatmap day is clicked', () => {
+    const root = document.createElement('div');
+    const callbacks = makeCallbacks();
+    renderOverview(root, {
+      settings: DEFAULT_SETTINGS,
+      records: [],
+      tags: [],
+      heatmap: [{ date: '2026-06-15', count: 2 }],
+      selectedDate: '2026-06-18',
+      editingRecordId: undefined,
+      filters: {},
+    }, callbacks);
+
+    const day15 = Array.from(root.querySelectorAll('.oqm-heatmap-day')).find((cell) => cell.textContent === '15') as HTMLButtonElement;
+    day15.click();
+    expect(callbacks.onSelectDate).toHaveBeenCalledWith('2026-06-15');
   });
 
   it('offers all six type filter options including todo status composites', () => {

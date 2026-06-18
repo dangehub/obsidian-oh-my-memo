@@ -1,7 +1,11 @@
+/* Obsidian Quick Memo — overview styles.
+   Uses Obsidian theme variables only so it follows light/dark themes. */
+
 .oqm-root {
   height: 100%;
   color: var(--text-normal);
   background: var(--background-primary);
+  font-size: var(--font-ui-small);
 }
 
 .oqm-root *,
@@ -10,9 +14,19 @@
   box-sizing: border-box;
 }
 
+.oqm-root button,
+.oqm-root select,
+.oqm-root input,
+.oqm-root textarea {
+  font-family: inherit;
+  font-size: var(--font-ui-small);
+}
+
+/* ---------- Layout ---------- */
+
 .oqm-layout {
   display: grid;
-  grid-template-columns: minmax(196px, 248px) minmax(380px, 1fr) minmax(196px, 264px);
+  grid-template-columns: minmax(208px, 256px) minmax(380px, 1fr) minmax(208px, 280px);
   gap: var(--size-4-4);
   height: 100%;
   padding: var(--size-4-4);
@@ -22,44 +36,75 @@
 .oqm-main,
 .oqm-heatmap {
   min-width: 0;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-l);
   padding: var(--size-4-4);
   background: var(--background-primary);
 }
 
-.oqm-main {
-  background: var(--background-primary);
+.oqm-sidebar,
+.oqm-heatmap {
+  overflow: auto;
 }
 
+.oqm-main {
+  overflow: hidden;
+}
+
+.oqm-main > .oqm-record-list {
+  overflow-y: auto;
+  padding-right: var(--size-2-2);
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* ---------- Sidebar ---------- */
+
 .oqm-profile {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
   padding-bottom: var(--size-4-3);
   border-bottom: 1px solid var(--background-modifier-border);
   margin-bottom: var(--size-4-3);
 }
 
+.oqm-profile-text {
+  min-width: 0;
+}
+
 .oqm-profile h2 {
-  margin: var(--size-4-2) 0 var(--size-2-2);
+  margin: 0;
   color: var(--text-normal);
   font-size: var(--font-ui-large);
   line-height: var(--line-height-tight);
 }
 
 .oqm-profile p {
-  margin: 0;
+  margin: 2px 0 0;
   color: var(--text-muted);
-  font-size: var(--font-ui-small);
+  font-size: var(--font-ui-smaller);
   line-height: var(--line-height-normal);
 }
 
 .oqm-avatar {
-  width: 64px;
-  height: 64px;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
   border-radius: 50%;
   object-fit: cover;
   border: 1px solid var(--background-modifier-border);
   background: var(--background-secondary);
+}
+
+.oqm-section-label {
+  margin: var(--size-4-3) 0 var(--size-2-2);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .oqm-type-filter,
@@ -71,13 +116,10 @@
   width: 100%;
   min-height: 36px;
   border-radius: var(--radius-s);
-}
-
-.oqm-search,
-.oqm-input,
-.oqm-edit-input {
-  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
   background: var(--background-primary);
+  color: var(--text-normal);
+  padding: 6px 8px;
 }
 
 .oqm-type-filter,
@@ -85,63 +127,84 @@
   margin-bottom: var(--size-2-3);
 }
 
+.oqm-search::placeholder,
+.oqm-input::placeholder,
+.oqm-edit-input::placeholder {
+  color: var(--text-faint);
+}
+
 .oqm-tags {
   display: flex;
   flex-wrap: wrap;
   gap: var(--size-2-2);
-  margin-top: var(--size-4-3);
 }
 
-.oqm-tags button,
-.oqm-record-actions button,
-.oqm-save,
-.oqm-heatmap-day {
+.oqm-tags button {
+  min-height: 28px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  color: var(--text-muted);
   cursor: pointer;
-}
-
-.oqm-tags button,
-.oqm-record-actions button,
-.oqm-save {
-  min-height: 32px;
-  border-radius: var(--radius-s);
   transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
 }
 
-.oqm-tags button:hover,
-.oqm-record-actions button:hover,
-.oqm-save:hover {
+.oqm-tags button:hover {
   border-color: var(--interactive-accent);
+  color: var(--text-normal);
 }
 
-.oqm-tags button:focus-visible,
-.oqm-record-actions button:focus-visible,
-.oqm-save:focus-visible,
-.oqm-heatmap-day:focus-visible,
-.oqm-input:focus-visible,
-.oqm-edit-input:focus-visible,
-.oqm-search:focus-visible,
-.oqm-type:focus-visible,
-.oqm-type-filter:focus-visible,
-.oqm-edit-type:focus-visible {
-  outline: 2px solid var(--interactive-accent);
-  outline-offset: 2px;
-}
+/* ---------- Composer (stacked: type, textarea, save on separate rows) ---------- */
 
 .oqm-composer {
-  display: grid;
-  grid-template-columns: 128px minmax(0, 1fr) auto;
-  gap: var(--size-4-2);
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-2-3);
   margin-bottom: var(--size-4-4);
-  padding-bottom: var(--size-4-4);
-  border-bottom: 1px solid var(--background-modifier-border);
+  padding: var(--size-4-3);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background: var(--background-secondary);
 }
 
-.oqm-input,
-.oqm-edit-input {
-  min-height: 88px;
+.oqm-composer .oqm-type {
+  align-self: flex-start;
+  width: auto;
+  min-width: 120px;
+}
+
+.oqm-input {
+  min-height: 96px;
   resize: vertical;
   line-height: var(--line-height-normal);
+  background: var(--background-primary);
+}
+
+.oqm-save {
+  align-self: flex-end;
+  min-height: 34px;
+  padding: 0 18px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--interactive-accent);
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.oqm-save:hover {
+  background: var(--interactive-accent-hover);
+  border-color: var(--interactive-accent-hover);
+}
+
+/* ---------- Record list ---------- */
+
+.oqm-main h3 {
+  margin: 0 0 var(--size-4-3);
+  font-size: var(--font-ui-medium);
+  color: var(--text-normal);
 }
 
 .oqm-record-list {
@@ -152,20 +215,38 @@
 
 .oqm-record {
   border: 1px solid var(--background-modifier-border);
+  border-left: 3px solid var(--background-modifier-border);
   border-radius: var(--radius-m);
   padding: var(--size-4-3);
   background: var(--background-secondary);
-  transition: border-color 160ms ease, background-color 160ms ease;
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
 }
 
 .oqm-record:hover {
   border-color: var(--background-modifier-border-hover);
+  box-shadow: 0 1px 3px var(--background-modifier-box-shadow);
 }
 
+.oqm-record-flash { border-left-color: var(--color-yellow, var(--interactive-accent)); }
+.oqm-record-todo { border-left-color: var(--color-blue, var(--interactive-accent)); }
+.oqm-record-record { border-left-color: var(--color-green, var(--interactive-accent)); }
+
 .oqm-record-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2-2);
   font-size: var(--font-ui-smaller);
   color: var(--text-muted);
   margin-bottom: var(--size-2-2);
+}
+
+.oqm-record-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
 }
 
 .oqm-record-content {
@@ -182,54 +263,132 @@
   margin-top: var(--size-4-2);
 }
 
+.oqm-record-actions button {
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.oqm-record-actions button:hover {
+  border-color: var(--interactive-accent);
+  color: var(--text-normal);
+}
+
 .oqm-edit-type {
   margin-bottom: var(--size-2-2);
 }
 
-.oqm-heatmap-grid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(18px, 1fr));
-  gap: var(--size-2-1);
-  align-items: center;
+.oqm-edit-input {
+  min-height: 96px;
+  resize: vertical;
 }
-
-.oqm-heatmap-day {
-  min-width: 18px;
-  min-height: 18px;
-  aspect-ratio: 1;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-s);
-  background: var(--background-modifier-border);
-  transition: background-color 160ms ease, border-color 160ms ease;
-}
-
-.oqm-heatmap-day:hover {
-  border-color: var(--interactive-accent-hover);
-}
-
-.oqm-heatmap-level-1 { background: color-mix(in srgb, var(--interactive-accent) 24%, var(--background-primary)); }
-.oqm-heatmap-level-2 { background: color-mix(in srgb, var(--interactive-accent) 42%, var(--background-primary)); }
-.oqm-heatmap-level-3 { background: color-mix(in srgb, var(--interactive-accent) 62%, var(--background-primary)); }
-.oqm-heatmap-level-4 { background: color-mix(in srgb, var(--interactive-accent) 82%, var(--background-primary)); }
 
 .oqm-empty {
   color: var(--text-muted);
   border: 1px dashed var(--background-modifier-border);
   border-radius: var(--radius-m);
-  padding: var(--size-4-8);
+  padding: var(--size-4-12);
   text-align: center;
   background: var(--background-secondary);
 }
+
+/* ---------- Heatmap (current month calendar) ---------- */
+
+.oqm-heatmap-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: var(--size-4-3);
+}
+
+.oqm-heatmap-month {
+  font-size: var(--font-ui-medium);
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.oqm-heatmap-hint {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+}
+
+.oqm-heatmap-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.oqm-heatmap-dow {
+  text-align: center;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+  padding-bottom: 2px;
+}
+
+.oqm-heatmap-blank {
+  visibility: hidden;
+}
+
+.oqm-heatmap-day {
+  aspect-ratio: 1;
+  min-height: 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: var(--background-primary-alt, var(--background-secondary));
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.oqm-heatmap-day:hover {
+  border-color: var(--interactive-accent-hover);
+  color: var(--text-normal);
+}
+
+.oqm-heatmap-day.is-selected {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px var(--interactive-accent);
+}
+
+.oqm-heatmap-level-0 { background: var(--background-primary-alt, var(--background-secondary)); color: var(--text-faint); }
+.oqm-heatmap-level-1 { background: color-mix(in srgb, var(--interactive-accent) 24%, var(--background-primary)); color: var(--text-muted); }
+.oqm-heatmap-level-2 { background: color-mix(in srgb, var(--interactive-accent) 44%, var(--background-primary)); color: var(--text-muted); }
+.oqm-heatmap-level-3 { background: color-mix(in srgb, var(--interactive-accent) 64%, var(--background-primary)); color: var(--text-on-accent); }
+.oqm-heatmap-level-4 { background: color-mix(in srgb, var(--interactive-accent) 84%, var(--background-primary)); color: var(--text-on-accent); font-weight: 600; }
+
+/* ---------- Shared focus ---------- */
+
+.oqm-tags button:focus-visible,
+.oqm-record-actions button:focus-visible,
+.oqm-save:focus-visible,
+.oqm-heatmap-day:focus-visible,
+.oqm-input:focus-visible,
+.oqm-edit-input:focus-visible,
+.oqm-search:focus-visible,
+.oqm-type:focus-visible,
+.oqm-type-filter:focus-visible,
+.oqm-edit-type:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
+}
+
+/* ---------- Responsive ---------- */
 
 @media (max-width: 900px) {
   .oqm-layout {
     grid-template-columns: 1fr;
     height: auto;
     min-height: 100%;
-  }
-
-  .oqm-composer {
-    grid-template-columns: 1fr;
   }
 
   .oqm-sidebar,

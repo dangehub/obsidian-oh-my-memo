@@ -55,8 +55,8 @@ export default class QuickMemoPlugin extends Plugin {
     await this.loadSettings();
 
     const vault = new ObsidianVaultAdapter(this);
-    const parser = new QuickMemoParser(this.settings.quickMemoHeading);
-    const resolver = new DailyNoteResolver(vault, getDailyNotesConfig(this.app), this.settings);
+    const parser = new QuickMemoParser(() => this.settings.quickMemoHeading);
+    const resolver = new DailyNoteResolver(vault, getDailyNotesConfig(this.app), this.settings, momentFormatter());
     const repository = new MarkdownRecordRepository(vault, resolver, parser, this.settings);
     this.index = new IndexService(vault, parser);
 
@@ -85,7 +85,7 @@ export default class QuickMemoPlugin extends Plugin {
       id: 'backfill-current-day-quick-memo-ids',
       name: 'Backfill missing Quick Memo block IDs for today',
       callback: async () => {
-        const count = await repository.backfillMissingIds(new Date().toISOString().slice(0, 10));
+        const count = await repository.backfillMissingIds(localToday());
         await this.index.rebuild();
         new Notice(`已补全 ${count} 条 Quick Memo ID`);
       },
@@ -119,5 +119,36 @@ export default class QuickMemoPlugin extends Plugin {
 
   async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
+    // Settings that affect parsing/resolution (heading, folders, date format)
+    // must rebuild the index and refresh any open overview so changes take effect.
+    await this.index.rebuild();
+    this.refreshOverview();
   }
+
+  private refreshOverview(): void {
+    for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_QUICK_MEMO)) {
+      const view = leaf.view;
+      if (view instanceof QuickMemoView) void view.refresh();
+    }
+  }
+}
+
+/** Format a YYYY-MM-DD date using Obsidian's moment, matching the user's Daily Notes config exactly. */
+function momentFormatter(): (date: string, format: string) => string {
+  const momentFn = (globalThis as { moment?: (inp: string) => { format(f: string): string } }).moment;
+  if (typeof momentFn === 'function') {
+    return (date, format) => momentFn(date).format(format);
+  }
+  return (date, format) => simpleFormatDate(date, format);
+}
+
+function simpleFormatDate(date: string, format: string): string {
+  const [year, month, day] = date.split('-');
+  return format.replace(/YYYY/gu, year).replace(/MM/gu, month).replace(/DD/gu, day);
+}
+
+function localToday(): string {
+  const now = new Date();
+  const pad = (value: number): string => String(value).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }

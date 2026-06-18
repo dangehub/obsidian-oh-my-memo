@@ -149,9 +149,16 @@ export class QuickMemoView extends ItemView {
 }
 
 function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  return localDateString(new Date());
 }
 
 function currentTime(): string {
-  return new Date().toTimeString().slice(0, 5);
+  const now = new Date();
+  const pad = (value: number): string => String(value).padStart(2, '0');
+  return `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+}
+
+function localDateString(date: Date): string {
+  const pad = (value: number): string => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
