@@ -23,10 +23,10 @@ Quick Memo 让你在 Obsidian 里：
 
 ### 方式 A：手动安装（本压缩包已包含运行所需文件）
 
-本压缩包内的 `obsidian-quick-memo` 文件夹已经包含 Obsidian 加载插件所需的全部文件：
+本压缩包内的 `swz-quick-memos` 文件夹已经包含 Obsidian 加载插件所需的全部文件：
 
 ```
-obsidian-quick-memo/
+swz-quick-memos/
 ├── manifest.json
 ├── main.js
 └── styles.css
@@ -34,10 +34,10 @@ obsidian-quick-memo/
 
 安装步骤：
 
-1. 解压本压缩包，得到 `obsidian-quick-memo` 文件夹；
+1. 解压本压缩包，得到 `swz-quick-memos` 文件夹；
 2. 把这个文件夹整个复制到你 vault 的插件目录：
    ```
-   <你的vault>/.obsidian/plugins/obsidian-quick-memo/
+   <你的vault>/.obsidian/plugins/swz-quick-memos/
    ```
    如果 `.obsidian/plugins` 目录不存在，手动创建即可；
 3. 打开 Obsidian → 设置 → 第三方插件（Community plugins）；
@@ -45,7 +45,7 @@ obsidian-quick-memo/
 5. 在已安装插件列表里找到 **Quick Memo**，打开开关启用它；
 6. 启用后，左侧栏会出现一个笔记本图标（notebook-pen），点击即可打开 Quick Memo 总览面板。
 
-> 说明：`main.js`、`styles.css`、`manifest.json` 这三个文件必须放在同一个名为 `obsidian-quick-memo` 的文件夹里，文件夹名要与 `manifest.json` 中的 `id` 一致，否则 Obsidian 无法识别。
+> 说明：`main.js`、`styles.css`、`manifest.json` 这三个文件必须放在同一个名为 `swz-quick-memos` 的文件夹里，文件夹名要与 `manifest.json` 中的 `id` 一致，否则 Obsidian 无法识别。
 
 ### 方式 B：从源码构建（开发者）
 
@@ -188,7 +188,7 @@ npm run build          # 生成 main.js
 插件自身配置存放在：
 
 ```
-<vault>/.obsidian/plugins/obsidian-quick-memo/data.json
+<vault>/.obsidian/plugins/swz-quick-memos/data.json
 ```
 
 卸载插件后，你已经写下的 Markdown 记录仍然保留在文件里，不会丢失。
