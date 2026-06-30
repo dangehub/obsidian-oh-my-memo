@@ -131,8 +131,8 @@ export default class QuickMemoPlugin extends Plugin {
       await workspace.revealLeaf(existing);
       return;
     }
-    // Open in the main content area (tab), not the right sidebar.
-    const leaf = workspace.getLeaf(true);
+    // Open in the main content area as a tab (works on both desktop & mobile).
+    const leaf = workspace.getLeaf('tab');
     await leaf.setViewState({ type: VIEW_TYPE_QUICK_MEMO, active: true });
     await workspace.revealLeaf(leaf);
   }
