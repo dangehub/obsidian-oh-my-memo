@@ -107,4 +107,32 @@ describe('QuickMemoParser', () => {
     expect(dynamic.parseFile('Daily Notes/2026-06-18.md', '2026-06-18', renamed).records).toHaveLength(1);
     expect(dynamic.parseFile('Daily Notes/2026-06-18.md', '2026-06-18', original).records).toHaveLength(0);
   });
+
+  it('parses multi-line records with tab-indented continuation (legacy Thino format)', () => {
+    const markdown = '## Quick Memo\n\n- 22:05\n\t今天的 Reddit 报料\n\t原文地址： https://example.com\n\t![[image.webp]]\n';
+    const result = parser.parseFile('test.md', '2026-06-30', markdown);
+    expect(result.records).toHaveLength(1);
+    expect(result.records[0]).toMatchObject({
+      type: 'memo',
+      time: '22:05',
+      content: '今天的 Reddit 报料',
+      body: '原文地址： https://example.com\n![[image.webp]]',
+      hasStableId: false,
+    });
+  });
+
+  it('parses bare memo with tab-indented block id at end', () => {
+    const markdown = '## Quick Memo\n\n- 09:12\n\thello #tag\n\tline 2 ^oqm-20260618-091200-a1b2\n';
+    const result = parser.parseFile('test.md', '2026-06-18', markdown);
+    expect(result.records).toHaveLength(1);
+    expect(result.records[0]).toMatchObject({
+      id: 'oqm-20260618-091200-a1b2',
+      type: 'memo',
+      time: '09:12',
+      content: 'hello #tag',
+      body: 'line 2',
+      hasStableId: true,
+      tags: ['#tag'],
+    });
+  });
 });

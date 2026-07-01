@@ -45,7 +45,7 @@ export class QuickMemoParser {
       let lineEnd = index;
       let next = index + 1;
       while (next < section.end && isIndentedContinuation(lines[next])) {
-        bodyLines.push(lines[next].replace(/^ {2}/u, ''));
+        bodyLines.push(lines[next].replace(/^(  |\t)/u, ''));
         lineEnd = next;
         next += 1;
       }
@@ -107,7 +107,7 @@ export class QuickMemoParser {
 
   private parseRecordLine(line: string, body: string, filePath: string, date: string, lineStart: number, lineEnd: number): QuickMemoRecord | undefined {
     const withoutId = stripBlockId(line);
-    const id = extractBlockId(line);
+    let id = extractBlockId(line);
     const taskMatch = withoutId.match(TASK_RE);
     const memoMatch = withoutId.match(MEMO_RE);
     const bareTaskMatch = withoutId.match(BARE_TASK_RE);
@@ -134,15 +134,44 @@ export class QuickMemoParser {
       type = 'todo';
       completed = bareTaskMatch[1].toLowerCase() === 'x';
       time = bareTaskMatch[2];
-      // Content is on the first indented continuation line, rest is body
-      const bodyLines = body.split('\n');
+      // Multi-line records place the block ID on the last indented line (see
+      // serializeRecord).  When the main line doesn't carry one, extract it
+      // from the last body line so the record keeps its stable identity.
+      let cleanBody = body;
+      if (!id) {
+        const rawLines = body.split('\n');
+        const lastIdx = rawLines.length - 1;
+        if (lastIdx >= 0) {
+          const tailId = extractBlockId(rawLines[lastIdx]);
+          if (tailId) {
+            id = tailId;
+            rawLines[lastIdx] = stripBlockId(rawLines[lastIdx]);
+            cleanBody = rawLines.join('\n');
+          }
+        }
+      }
+      const bodyLines = cleanBody.split('\n');
       content = bodyLines[0]?.trim() ?? '';
       bodyText = bodyLines.slice(1).join('\n').trim() || undefined;
     } else if (bareMemoMatch) {
       type = 'memo';
       time = bareMemoMatch[1];
-      // Content is on the first indented continuation line, rest is body
-      const bodyLines = body.split('\n');
+      // Same logic as bareTaskMatch above: recover the block ID from the last
+      // indented line when the main time line doesn't have one.
+      let cleanBody = body;
+      if (!id) {
+        const rawLines = body.split('\n');
+        const lastIdx = rawLines.length - 1;
+        if (lastIdx >= 0) {
+          const tailId = extractBlockId(rawLines[lastIdx]);
+          if (tailId) {
+            id = tailId;
+            rawLines[lastIdx] = stripBlockId(rawLines[lastIdx]);
+            cleanBody = rawLines.join('\n');
+          }
+        }
+      }
+      const bodyLines = cleanBody.split('\n');
       content = bodyLines[0]?.trim() ?? '';
       bodyText = bodyLines.slice(1).join('\n').trim() || undefined;
     } else {
@@ -190,7 +219,7 @@ export class QuickMemoParser {
 }
 
 function isIndentedContinuation(line: string): boolean {
-  return line.startsWith('  ');
+  return line.startsWith('  ') || line.startsWith('\t');
 }
 
 function extractTags(text: string): string[] {
