@@ -85,6 +85,11 @@ export function renderOverview(root: HTMLElement, state: OverviewState, callback
   const markdown = state.markdown ?? TEXT_MARKDOWN;
   const layout = appendDiv(root, 'oqm-layout');
   renderSidebar(appendDiv(layout, 'oqm-sidebar'), state, callbacks);
+
+  /* Mobile drawer backdrop — tapping it closes the sidebar. */
+  const backdrop = appendDiv(root, 'oqm-sidebar-backdrop');
+  backdrop.addEventListener('click', () => callbacks.onToggleSidebar());
+
   renderMain(appendDiv(layout, 'oqm-main'), state, callbacks, markdown);
 }
 
@@ -172,6 +177,36 @@ function renderSidebar(container: HTMLElement, state: OverviewState, callbacks: 
 }
 
 function renderMain(container: HTMLElement, state: OverviewState, callbacks: OverviewCallbacks, markdown: MarkdownApi): void {
+  /* ── Mobile top bar: ☰ | title | sort ── */
+  const topBar = appendDiv(container, 'oqm-mobile-topbar');
+  const menuBtn = appendEl(topBar, 'button', 'oqm-mobile-menu-btn');
+  menuBtn.type = 'button';
+  menuBtn.setAttribute('aria-label', state.sidebarCollapsed ? '打开侧边栏' : '关闭侧边栏');
+  menuBtn.textContent = state.sidebarCollapsed ? '☰' : '✕';
+  menuBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    callbacks.onToggleSidebar();
+  });
+
+  const titleSpan = appendEl(topBar, 'span', 'oqm-mobile-title');
+  const hasFilter = Boolean(state.filters.tag) || Boolean(state.filters.text?.trim());
+  if (hasFilter) {
+    titleSpan.textContent = '筛选结果';
+  } else if (state.viewMode === 'all') {
+    titleSpan.textContent = `全部记录 · ${state.recordsTotal} 条`;
+  } else {
+    titleSpan.textContent = `${state.selectedDate} 时间线`;
+  }
+
+  const sortBtn = appendEl(topBar, 'button', 'oqm-mobile-sort-btn');
+  sortBtn.type = 'button';
+  sortBtn.setAttribute('aria-label', '切换排序');
+  sortBtn.textContent = state.sortDirection === 'asc' ? '↑' : '↓';
+  sortBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    callbacks.onToggleSort();
+  });
+
   const composer = appendDiv(container, 'oqm-composer');
 
   // First row: type selector on the left, the date the record will save to on the
@@ -356,6 +391,18 @@ function renderRecord(list: HTMLElement, record: QuickMemoRecord, editing: boole
   const contentEl = appendDiv(body, 'oqm-record-content');
   markdown.render(record.body ? `${record.content}\n${record.body}` : record.content, contentEl);
 
+  // Attach image lightbox to any <img> rendered inside the card body.
+  const images = contentEl.querySelectorAll('img');
+  for (let i = 0; i < images.length; i++) {
+    const img = images[i];
+    img.classList.add('oqm-img-zoomable');
+    img.style.cursor = 'zoom-in';
+    img.addEventListener('click', (event: MouseEvent) => {
+      event.stopPropagation();
+      showImageLightbox(img.src, img.alt || '');
+    });
+  }
+
   if (menuOpen) {
     const menu = appendDiv(card, 'oqm-record-menu');
     if (record.type === 'todo') {
@@ -492,4 +539,136 @@ function appendOption(select: HTMLSelectElement, label: string, value: string): 
   option.textContent = label;
   option.value = value;
   select.appendChild(option);
+}
+
+/* ────────── Image Lightbox ────────── */
+
+interface LightboxState {
+  scale: number;
+  overlay: HTMLElement | null;
+  imgEl: HTMLImageElement | null;
+}
+
+const lightbox: LightboxState = { scale: 1, overlay: null, imgEl: null };
+
+function ensureLightbox(): HTMLElement {
+  if (lightbox.overlay) return lightbox.overlay;
+
+  const overlay = activeDocument.createElement('div');
+  overlay.className = 'oqm-lightbox';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-label', '图片查看器');
+  overlay.addEventListener('click', closeLightbox);
+
+  const backdrop = activeDocument.createElement('div');
+  backdrop.className = 'oqm-lightbox-backdrop';
+  overlay.appendChild(backdrop);
+
+  const wrapper = activeDocument.createElement('div');
+  wrapper.className = 'oqm-lightbox-wrapper';
+  overlay.appendChild(wrapper);
+
+  const img = activeDocument.createElement('img');
+  img.className = 'oqm-lightbox-img';
+  img.draggable = false;
+  wrapper.appendChild(img);
+
+  const closeBtn = activeDocument.createElement('button');
+  closeBtn.className = 'oqm-lightbox-close';
+  closeBtn.type = 'button';
+  closeBtn.setAttribute('aria-label', '关闭');
+  closeBtn.textContent = '✕';
+  closeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeLightbox();
+  });
+  overlay.appendChild(closeBtn);
+
+  const hint = activeDocument.createElement('div');
+  hint.className = 'oqm-lightbox-hint';
+  hint.textContent = '滚轮缩放 · 双击切换 · 点击空白关闭';
+  overlay.appendChild(hint);
+
+  activeDocument.body.appendChild(overlay);
+  lightbox.overlay = overlay;
+  lightbox.imgEl = img;
+
+  // Desktop: wheel zoom
+  wrapper.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.15 : 0.15;
+    setZoom(lightbox.scale + delta);
+  }, { passive: false });
+
+  // Double-click: toggle between fit (1) and 2x
+  wrapper.addEventListener('dblclick', (e) => {
+    e.stopPropagation();
+    setZoom(lightbox.scale === 1 ? 2 : 1);
+  });
+
+  // Mobile pinch zoom
+  let pinchStart = 0;
+  wrapper.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      pinchStart = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY,
+      );
+    }
+  }, { passive: true });
+  wrapper.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2 && pinchStart > 0) {
+      const current = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY,
+      );
+      const newScale = lightbox.scale * (current / pinchStart);
+      setZoom(newScale);
+      pinchStart = current;
+    }
+  }, { passive: true });
+  wrapper.addEventListener('touchend', () => {
+    pinchStart = 0;
+  });
+
+  // Escape key
+  activeDocument.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && lightbox.overlay?.classList.contains('oqm-lightbox--open')) {
+      closeLightbox();
+    }
+  });
+
+  return overlay;
+}
+
+let currentLightboxSrc = '';
+
+function showImageLightbox(src: string, alt: string): void {
+  const overlay = ensureLightbox();
+  const img = lightbox.imgEl!;
+  if (currentLightboxSrc === src && overlay.classList.contains('oqm-lightbox--open')) {
+    closeLightbox();
+    return;
+  }
+  currentLightboxSrc = src;
+  img.src = src;
+  img.alt = alt;
+  lightbox.scale = 1;
+  img.style.transform = 'scale(1)';
+  overlay.classList.add('oqm-lightbox--open');
+}
+
+function setZoom(scale: number): void {
+  const clamped = Math.max(0.5, Math.min(5, Math.round(scale * 100) / 100));
+  lightbox.scale = clamped;
+  if (lightbox.imgEl) {
+    lightbox.imgEl.style.transform = `scale(${clamped})`;
+  }
+}
+
+function closeLightbox(): void {
+  if (lightbox.overlay) {
+    lightbox.overlay.classList.remove('oqm-lightbox--open');
+  }
+  currentLightboxSrc = '';
 }
