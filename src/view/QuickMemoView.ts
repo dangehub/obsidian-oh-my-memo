@@ -26,6 +26,12 @@ export class QuickMemoView extends ItemView {
   private dateRange: { start: string; end: string } | null = null;
   /** Number of records currently visible (lazy load). */
   private visibleCount = 50;
+  /** Whether the inline date range expansion panel is shown. */
+  private dateRangeExpanded = false;
+  /** Pre-filled start date for the expansion panel editor. */
+  private dateRangeEditStart?: string;
+  /** Pre-filled end date for the expansion panel editor. */
+  private dateRangeEditEnd?: string;
   /** Child components created by MarkdownRenderer during a render; unloaded on
    *  the next full re-render so the live markdown rendering doesn't leak. */
   private renderChildren: Component[] = [];
@@ -181,6 +187,9 @@ export class QuickMemoView extends ItemView {
       viewMode: this.viewMode,
       dateRangeStart: this.dateRange?.start,
       dateRangeEnd: this.dateRange?.end,
+      dateRangeExpanded: this.dateRangeExpanded,
+      dateRangeEditStart: this.dateRangeEditStart,
+      dateRangeEditEnd: this.dateRangeEditEnd,
       markdown: {
         render: (source, el) => {
           const component = new Component();
@@ -196,7 +205,10 @@ export class QuickMemoView extends ItemView {
         this.viewMode = 'date';
         this.dateRange = null;
         this.visibleCount = 50;
-        this.sidebarCollapsed = true;
+        // Only auto-close sidebar on narrow screens / mobile
+        if (Platform.isMobile || window.innerWidth <= 900) {
+          this.sidebarCollapsed = true;
+        }
         this.render();
       },
       onToggleTodo: (record) => {
@@ -259,14 +271,38 @@ export class QuickMemoView extends ItemView {
       onShowAll: () => {
         this.viewMode = 'all';
         this.dateRange = null;
+        this.dateRangeExpanded = false;
+        this.dateRangeEditStart = undefined;
+        this.dateRangeEditEnd = undefined;
         this.visibleCount = 50;
         this.render();
       },
       onApplyDateRange: (start, end) => {
         this.viewMode = 'range';
         this.dateRange = { start, end };
+        this.dateRangeExpanded = false;
         this.visibleCount = 50;
-        this.sidebarCollapsed = true;
+        if (Platform.isMobile || window.innerWidth <= 900) {
+          this.sidebarCollapsed = true;
+        }
+        this.render();
+      },
+      onExpandDateRange: (start) => {
+        this.dateRangeExpanded = true;
+        this.dateRangeEditStart = start;
+        this.dateRangeEditEnd = undefined;
+        this.render();
+      },
+      onEditDateRange: (start, end) => {
+        this.dateRangeExpanded = true;
+        this.dateRangeEditStart = start;
+        this.dateRangeEditEnd = end;
+        this.render();
+      },
+      onCancelDateRange: () => {
+        this.dateRangeExpanded = false;
+        this.dateRangeEditStart = undefined;
+        this.dateRangeEditEnd = undefined;
         this.render();
       },
       onHeatmapPrevMonth: () => {

@@ -48,6 +48,12 @@ export interface OverviewState {
   dateRangeStart?: string;
   /** End of the date range (inclusive). Only set when viewMode === 'range'. */
   dateRangeEnd?: string;
+  /** Whether the inline date range expansion panel is visible. */
+  dateRangeExpanded: boolean;
+  /** Start date for the expansion panel editor (pre-filled). */
+  dateRangeEditStart?: string;
+  /** End date for the expansion panel editor (pre-filled when editing). */
+  dateRangeEditEnd?: string;
 }
 
 export interface OverviewCallbacks {
@@ -69,6 +75,12 @@ export interface OverviewCallbacks {
   onShowAll(): void;
   /** Apply a date range filter (inclusive). */
   onApplyDateRange(start: string, end: string): void;
+  /** Expand the inline date range editor (single-date mode). */
+  onExpandDateRange(start: string): void;
+  /** Open the inline date range editor for editing an existing range. */
+  onEditDateRange(start: string, end: string): void;
+  /** Dismiss the inline date range expansion panel without applying. */
+  onCancelDateRange(): void;
   onHeatmapPrevMonth(): void;
   onHeatmapNextMonth(): void;
   onAttachFile(file: File, textarea: HTMLTextAreaElement): void;
@@ -94,6 +106,15 @@ export function renderOverview(root: HTMLElement, state: OverviewState, callback
   const markdown = state.markdown ?? TEXT_MARKDOWN;
   const layout = appendDiv(root, 'omm-layout');
   renderSidebar(appendDiv(layout, 'omm-sidebar'), state, callbacks);
+
+  /* Desktop sidebar toggle — visible when sidebar is collapsed so the user
+     can always re-open it. Sits as a small floating button on the left edge. */
+  const desktopToggle = appendEl(root, 'button', 'omm-desktop-sidebar-toggle');
+  desktopToggle.type = 'button';
+  desktopToggle.textContent = '☰';
+  desktopToggle.title = '展开侧边栏';
+  desktopToggle.setAttribute('aria-label', '展开侧边栏');
+  desktopToggle.onclick = () => callbacks.onToggleSidebar();
 
   /* Mobile drawer backdrop — tapping it closes the sidebar. */
   const backdrop = appendDiv(root, 'omm-sidebar-backdrop');
@@ -123,41 +144,7 @@ function renderSidebar(container: HTMLElement, state: OverviewState, callbacks: 
   // Heatmap sits between the profile/slogan and the filter controls.
   renderHeatmap(container, state.heatmap, state.todayDate, state.selectedDate, callbacks);
 
-  // Date jumper — pick any arbitrary date (not limited to heatmap window).
-  const jumper = appendDiv(container, 'omm-date-jumper');
-  appendDiv(jumper, 'omm-section-label', '跳转到日期');
-  const dateInput = appendEl(jumper, 'input', 'omm-date-jumper-input');
-  dateInput.type = 'date';
-  dateInput.value = state.selectedDate;
-  dateInput.setAttribute('aria-label', '选择日期跳转');
-  dateInput.onchange = () => {
-    if (dateInput.value) callbacks.onSelectDate(dateInput.value);
-  };
-
-  // Date range filter — two date inputs + apply button
-  const rangeSection = appendDiv(container, 'omm-date-range');
-  appendDiv(rangeSection, 'omm-section-label', '日期范围筛选');
-  const rangeInputs = appendDiv(rangeSection, 'omm-date-range-inputs');
-  const rangeStart = appendEl(rangeInputs, 'input', 'omm-date-range-start');
-  rangeStart.type = 'date';
-  rangeStart.setAttribute('aria-label', '开始日期');
-  const rangeSep = appendEl(rangeInputs, 'span', 'omm-date-range-sep', '至');
-  const rangeEnd = appendEl(rangeInputs, 'input', 'omm-date-range-end');
-  rangeEnd.type = 'date';
-  rangeEnd.setAttribute('aria-label', '结束日期');
-  const applyBtn = appendEl(rangeSection, 'button', 'omm-date-range-apply', '筛选');
-  applyBtn.type = 'button';
-  applyBtn.onclick = () => {
-    if (rangeStart.value && rangeEnd.value) {
-      const start = rangeStart.value;
-      const end = rangeEnd.value;
-      // Ensure start <= end
-      if (start <= end) {
-        callbacks.onApplyDateRange(start, end);
-      }
-    }
-  };
-
+  // Stats
   renderStats(container, state.stats);
 
   appendDiv(container, 'omm-section-label', '筛选');
@@ -301,26 +288,74 @@ function renderMain(container: HTMLElement, state: OverviewState, callbacks: Ove
     if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') submit();
   };
 
-  // Tag / keyword filters are vault-wide: group the results by date instead of
-  // showing a single-day timeline. Otherwise it's the normal single-day view.
-  const crossDate = Boolean(state.filters.tag) || Boolean(state.filters.text?.trim());
-
-  // ── Filter chip: show the active date/range filter with a clear button ──
+  // ── Progressive date filter chip ──
+  // Shows when a date or range filter is active. Single-day mode shows [date ✕] [+ 结束日期],
+  // range mode shows [date 至 MM-DD ✕]. Clicking the date opens a picker (single) or re-opens
+  // the range editor (range). Clicking [+ 结束日期] expands an inline range editor.
   if (state.viewMode === 'date' || state.viewMode === 'range') {
     const chipRow = appendDiv(container, 'omm-filter-chip-row');
     const chip = appendDiv(chipRow, 'omm-filter-chip');
-    let label: string;
-    if (state.viewMode === 'date') {
-      label = state.selectedDate;
+    const chipDateBtn = appendEl(chip, 'button', 'omm-filter-chip-date');
+    chipDateBtn.type = 'button';
+    if (state.viewMode === 'range' && state.dateRangeStart && state.dateRangeEnd) {
+      const endShort = state.dateRangeEnd.slice(5);
+      chipDateBtn.textContent = `${state.dateRangeStart} 至 ${endShort}`;
+      chipDateBtn.title = '点击编辑日期范围';
+      chipDateBtn.onclick = () => callbacks.onEditDateRange(state.dateRangeStart!, state.dateRangeEnd!);
     } else {
-      label = `${state.dateRangeStart} 至 ${state.dateRangeEnd}`;
+      chipDateBtn.textContent = state.selectedDate;
+      chipDateBtn.title = '点击切换日期';
+      chipDateBtn.onclick = () => {
+        // Open a hidden date input's picker
+        const picker = appendEl(chipRow, 'input', 'omm-filter-chip-picker');
+        picker.type = 'date';
+        picker.value = state.selectedDate;
+        picker.style.cssText = 'position:absolute;opacity:0;pointer-events:none;width:1px;height:1px';
+        picker.onchange = () => { if (picker.value) callbacks.onSelectDate(picker.value); };
+        if (picker.showPicker) { picker.showPicker(); } else { picker.click(); }
+      };
     }
-    const chipText = appendEl(chip, 'span', 'omm-filter-chip-text', label);
-    const clearBtn = appendEl(chip, 'button', 'omm-filter-chip-clear', '✕');
-    clearBtn.type = 'button';
-    clearBtn.title = '清除日期筛选';
-    clearBtn.onclick = () => callbacks.onShowAll();
+    const chipClose = appendEl(chip, 'button', 'omm-filter-chip-close', '✕');
+    chipClose.type = 'button';
+    chipClose.title = '清除日期筛选';
+    chipClose.onclick = () => callbacks.onShowAll();
+
+    // In single mode, show [+ 结束日期] trigger
+    if (state.viewMode === 'date') {
+      const expandBtn = appendEl(chipRow, 'button', 'omm-filter-expand-trigger', '+ 结束日期');
+      expandBtn.type = 'button';
+      expandBtn.onclick = () => callbacks.onExpandDateRange(state.selectedDate);
+    }
   }
+
+  // ── Inline date range expansion panel ──
+  if (state.dateRangeExpanded) {
+    const panel = appendDiv(container, 'omm-filter-expand-panel');
+    appendEl(panel, 'span', 'omm-filter-expand-label', '从');
+    const startInput = appendEl(panel, 'input', 'omm-filter-expand-start');
+    startInput.type = 'date';
+    startInput.value = state.dateRangeEditStart ?? state.selectedDate;
+    appendEl(panel, 'span', 'omm-filter-expand-label', '至');
+    const endInput = appendEl(panel, 'input', 'omm-filter-expand-end');
+    endInput.type = 'date';
+    endInput.value = state.dateRangeEditEnd ?? '';
+    const confirmBtn = appendEl(panel, 'button', 'omm-filter-expand-confirm', '确定');
+    confirmBtn.type = 'button';
+    confirmBtn.title = '应用日期范围';
+    confirmBtn.onclick = () => {
+      const start = state.dateRangeEditStart ?? state.selectedDate;
+      const end = endInput.value;
+      if (end) callbacks.onApplyDateRange(start, end);
+    };
+    const cancelBtn = appendEl(panel, 'button', 'omm-filter-expand-cancel', '取消');
+    cancelBtn.type = 'button';
+    cancelBtn.title = '取消';
+    cancelBtn.onclick = () => callbacks.onCancelDateRange();
+  }
+
+  // Tag / keyword filters are vault-wide: group the results by date instead of
+  // showing a single-day timeline. Otherwise it's the normal single-day view.
+  const crossDate = Boolean(state.filters.tag) || Boolean(state.filters.text?.trim());
 
   // Sort direction toggle + date heading row
   const headingRow = appendDiv(container, 'omm-heading-row');

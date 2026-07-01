@@ -27,6 +27,7 @@ describe('renderOverview', () => {
       sidebarCollapsed: false,
       recordsTotal: 1,
       viewMode: 'all',
+      dateRangeExpanded: false,
     }, callbacks);
 
     expect(root.querySelector('.omm-layout')).toBeTruthy();
@@ -63,6 +64,7 @@ describe('renderOverview', () => {
       sidebarCollapsed: false,
       recordsTotal: 0,
       viewMode: 'all',
+      dateRangeExpanded: false,
     }, callbacks);
 
     const day15 = Array.from(root.querySelectorAll('.omm-heatmap-day')).find((cell) => cell.getAttribute('title')?.startsWith('2026-06-15')) as HTMLButtonElement;
@@ -89,6 +91,7 @@ describe('renderOverview', () => {
       sidebarCollapsed: false,
       recordsTotal: 1,
       viewMode: 'all',
+      dateRangeExpanded: false,
     }, callbacks);
 
     expect(root.querySelector('.omm-record-actions')).toBeNull();
@@ -119,6 +122,7 @@ describe('renderOverview', () => {
       sidebarCollapsed: false,
       recordsTotal: 1,
       viewMode: 'all',
+      dateRangeExpanded: false,
     }, callbacks);
 
     const items = Array.from(root.querySelectorAll('.omm-record-menu-item')) as HTMLButtonElement[];
@@ -148,6 +152,7 @@ describe('renderOverview', () => {
       sidebarCollapsed: false,
       recordsTotal: 0,
       viewMode: 'all',
+      dateRangeExpanded: false,
     }, callbacks);
 
     const tagButton = root.querySelector<HTMLButtonElement>('.omm-tags button')!;
@@ -175,6 +180,7 @@ describe('renderOverview', () => {
       sidebarCollapsed: false,
       recordsTotal: 0,
       viewMode: 'all',
+      dateRangeExpanded: false,
     }, makeCallbacks());
 
     const select = root.querySelector<HTMLSelectElement>('.omm-type-filter');
@@ -204,6 +210,7 @@ describe('renderOverview', () => {
       sidebarCollapsed: false,
       recordsTotal: 0,
       viewMode: 'all',
+      dateRangeExpanded: false,
     }, makeCallbacks());
     expect(doneRoot.querySelector<HTMLSelectElement>('.omm-type-filter')?.value).toBe('todo-done');
 
@@ -223,6 +230,7 @@ describe('renderOverview', () => {
       sidebarCollapsed: false,
       recordsTotal: 0,
       viewMode: 'all',
+      dateRangeExpanded: false,
     }, makeCallbacks());
     expect(openRoot.querySelector<HTMLSelectElement>('.omm-type-filter')?.value).toBe('todo-open');
   });
@@ -246,6 +254,7 @@ describe('renderOverview', () => {
       sidebarCollapsed: false,
       recordsTotal: 0,
       viewMode: 'all',
+      dateRangeExpanded: false,
     }, callbacks);
 
     const select = root.querySelector<HTMLSelectElement>('.omm-type-filter')!;
@@ -281,6 +290,7 @@ describe('renderOverview', () => {
       sidebarCollapsed: false,
       recordsTotal: 0,
       viewMode: 'all',
+      dateRangeExpanded: false,
     }, makeCallbacks());
 
     const stats = root.querySelector('.omm-stats');
@@ -314,6 +324,7 @@ describe('renderOverview', () => {
       sidebarCollapsed: false,
       recordsTotal: 0,
       viewMode: 'all',
+      dateRangeExpanded: false,
     }, callbacks);
 
     const todayLink = root.querySelector<HTMLButtonElement>('.omm-heatmap-today');
@@ -340,6 +351,7 @@ describe('renderOverview', () => {
       sidebarCollapsed: false,
       recordsTotal: 0,
       viewMode: 'all',
+      dateRangeExpanded: false,
     }, makeCallbacks());
 
     const todayBtn = root.querySelector<HTMLButtonElement>('.omm-heatmap-today');
@@ -365,6 +377,7 @@ describe('renderOverview', () => {
       sidebarCollapsed: false,
       recordsTotal: 0,
       viewMode: 'all',
+      dateRangeExpanded: false,
     }, makeCallbacks());
 
     expect(root.querySelector('.omm-composer-date')?.textContent).toBe('2026-06-21');
@@ -391,6 +404,7 @@ describe('renderOverview', () => {
       sidebarCollapsed: false,
       recordsTotal: 2,
       viewMode: 'all',
+      dateRangeExpanded: false,
     }, makeCallbacks());
 
     const headingRow = root.querySelector('.omm-heading-row');
@@ -420,6 +434,9 @@ function makeCallbacks() {
     onLoadMore: vi.fn(),
     onShowAll: vi.fn(),
     onApplyDateRange: vi.fn(),
+    onExpandDateRange: vi.fn(),
+    onEditDateRange: vi.fn(),
+    onCancelDateRange: vi.fn(),
     onHeatmapPrevMonth: vi.fn(),
     onHeatmapNextMonth: vi.fn(),
     onAttachFile: vi.fn(),

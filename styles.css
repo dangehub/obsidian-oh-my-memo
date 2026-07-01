@@ -7,6 +7,7 @@
   color: var(--text-normal);
   background: var(--background-primary);
   font-size: var(--font-ui-small);
+  position: relative;
 }
 
 .omm-root *,
@@ -735,7 +736,7 @@
 }
 
 .omm-stats-types {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
 }
 
 .omm-stats-breadth {
@@ -799,35 +800,116 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ---------- Date jumper — pick any arbitrary date ---------- */
+/* Collapse button inside the profile area. */
+.omm-sidebar-collapse-btn {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: var(--background-secondary);
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  margin-left: auto;
+  transition: background-color 160ms ease, color 160ms ease;
+}
 
-.omm-date-jumper {
+.omm-sidebar-collapse-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+/* When sidebar is collapsed on desktop, hide it. */
+.omm-sidebar-collapsed .omm-sidebar {
+  display: none;
+}
+
+/* Desktop sidebar toggle — visible when sidebar is collapsed. Positioned
+   relative to .omm-root so it stays inside the Obsidian view, aligned with
+   where the sidebar's close button was. */
+.omm-desktop-sidebar-toggle {
+  display: none;
+  position: absolute;
+  left: var(--size-4-2);
+  top: var(--size-4-4);
+  z-index: 100;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: var(--background-secondary);
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  opacity: 0;
+  transition: background-color 160ms ease, color 160ms ease, opacity 200ms ease;
+}
+
+.omm-sidebar-collapsed .omm-desktop-sidebar-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+}
+
+.omm-desktop-sidebar-toggle:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.omm-sidebar-collapsed .omm-layout {
+  grid-template-columns: 1fr;
+}
+
+/* Sort toggle button in the heading row */
+.omm-heading-row {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2-3);
   margin-bottom: var(--size-4-3);
 }
 
-.omm-date-jumper .omm-section-label {
-  margin: var(--size-4-3) 0 var(--size-2-2);
+.omm-heading-row h3 {
+  margin: 0;
+  flex: 1 1 auto;
 }
 
-.omm-date-jumper-input {
-  width: 100%;
-  min-height: 36px;
-  border-radius: var(--radius-s);
+.omm-sort-toggle {
+  min-height: 28px;
+  padding: 0 10px;
   border: 1px solid var(--background-modifier-border);
-  background: var(--background-primary);
+  border-radius: var(--radius-s);
+  background: var(--background-secondary);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.omm-sort-toggle:hover {
+  background: var(--background-modifier-hover);
   color: var(--text-normal);
-  padding: 6px 8px;
-  font-family: inherit;
-  font-size: var(--font-ui-small);
-}
-
-.omm-date-jumper-input:focus {
   border-color: var(--interactive-accent);
-  box-shadow: 0 0 0 1px var(--interactive-accent);
-  outline: none;
 }
 
-/* Collapse button inside the profile area. */\n.omm-sidebar-collapse-btn {\n  flex: 0 0 auto;\n  width: 28px;\n  height: 28px;\n  padding: 0;\n  border: 1px solid var(--background-modifier-border);\n  border-radius: var(--radius-s);\n  background: var(--background-secondary);\n  color: var(--text-muted);\n  font-size: 14px;\n  line-height: 1;\n  cursor: pointer;\n  margin-left: auto;\n  transition: background-color 160ms ease, color 160ms ease;\n}\n\n.omm-sidebar-collapse-btn:hover {\n  background: var(--background-modifier-hover);\n  color: var(--text-normal);\n}\n\n/* When sidebar is collapsed, hide everything in the sidebar except the profile. */\n.omm-sidebar-collapsed .omm-sidebar {\n  display: none;\n}\n\n.omm-sidebar-collapsed .omm-layout {\n  grid-template-columns: 1fr;\n}\n\n/* Sort toggle button in the heading row */\n.omm-heading-row {\n  display: flex;\n  align-items: center;\n  gap: var(--size-2-3);\n  margin-bottom: var(--size-4-3);\n}\n\n.omm-heading-row h3 {\n  margin: 0;\n  flex: 1 1 auto;\n}\n\n.omm-sort-toggle {\n  min-height: 28px;\n  padding: 0 10px;\n  border: 1px solid var(--background-modifier-border);\n  border-radius: var(--radius-s);\n  background: var(--background-secondary);\n  color: var(--text-muted);\n  font-size: var(--font-ui-smaller);\n  cursor: pointer;\n  white-space: nowrap;\n  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;\n}\n\n.omm-sort-toggle:hover {\n  background: var(--background-modifier-hover);\n  color: var(--text-normal);\n  border-color: var(--interactive-accent);\n}\n\n/* Warning badge at the bottom of the sidebar */\n.omm-warnings {\n  margin-top: var(--size-4-3);\n  padding: var(--size-2-2) var(--size-2-3);\n  border: 1px solid var(--background-modifier-border);\n  border-radius: var(--radius-s);\n  background: var(--background-secondary);\n  color: var(--text-muted);\n  font-size: var(--font-ui-smaller);\n  line-height: var(--line-height-normal);\n}\n\n/* ---------- Shared focus ---------- */
+/* Warning badge at the bottom of the sidebar */
+.omm-warnings {
+  margin-top: var(--size-4-3);
+  padding: var(--size-2-2) var(--size-2-3);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: var(--background-secondary);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  line-height: var(--line-height-normal);
+}
+
+/* ---------- Shared focus ---------- */
 
 .omm-tags button:focus-visible,
 .omm-record-actions button:focus-visible,
@@ -968,6 +1050,11 @@
   /* Hide in-sidebar collapse button on mobile (top bar replaces it) */
   .omm-sidebar-collapse-btn {
     display: none;
+  }
+
+  /* Hide desktop floating toggle on mobile (mobile top bar has its own ☰) */
+  .omm-desktop-sidebar-toggle {
+    display: none !important;
   }
 
   /* Compact composer on mobile */
@@ -1174,60 +1261,13 @@
   padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
 }
 
-/* ── Date range picker (sidebar) ── */
-
-.omm-date-range {
-  margin-bottom: var(--size-4-3);
-}
-
-.omm-date-range-inputs {
-  display: flex;
-  align-items: center;
-  gap: var(--size-2-1);
-  margin-bottom: var(--size-2-2);
-}
-
-.omm-date-range-start,
-.omm-date-range-end {
-  flex: 1;
-  min-width: 0;
-  padding: var(--size-2-1) var(--size-2-2);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-s);
-  background: var(--background-primary);
-  color: var(--text-normal);
-  font-size: var(--font-ui-smaller);
-  font-family: inherit;
-}
-
-.omm-date-range-sep {
-  font-size: var(--font-ui-smaller);
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.omm-date-range-apply {
-  width: 100%;
-  padding: var(--size-2-1) var(--size-4-2);
-  border: 0;
-  border-radius: var(--radius-s);
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
-  font-size: var(--font-ui-small);
-  font-family: inherit;
-  cursor: pointer;
-  transition: opacity 160ms ease;
-}
-
-.omm-date-range-apply:hover {
-  opacity: 0.85;
-}
-
-/* ── Filter chip (main view, above records) ── */
+/* ── Progressive date filter chip (main view, above records) ── */
 
 .omm-filter-chip-row {
   display: flex;
-  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--size-2-2);
   margin-bottom: var(--size-4-2);
 }
 
@@ -1236,16 +1276,33 @@
   align-items: center;
   gap: var(--size-2-2);
   padding: var(--size-2-1) var(--size-4-3);
+  border: 0;
   border-radius: 999px;
   background: var(--background-modifier-hover);
   font-size: var(--font-ui-small);
 }
 
-.omm-filter-chip-text {
+.omm-filter-chip .omm-filter-chip-date {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: color 160ms ease;
 }
 
-.omm-filter-chip-clear {
+.omm-filter-chip .omm-filter-chip-date:hover {
+  color: var(--interactive-accent);
+}
+
+.omm-filter-chip .omm-filter-chip-close {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1255,17 +1312,108 @@
   border: 0;
   border-radius: 50%;
   background: transparent;
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-size: 11px;
   cursor: pointer;
   transition: background-color 160ms ease, color 160ms ease;
 }
 
-.omm-filter-chip-clear:hover {
+.omm-filter-chip .omm-filter-chip-close:hover {
   background: var(--background-modifier-border);
   color: var(--text-normal);
 }
 
-.omm-load-more {
-  padding-bottom: var(--size-4-4);
+button.omm-filter-expand-trigger {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--size-2-1) var(--size-4-3);
+  border: 0;
+  border-radius: 999px;
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease;
 }
+
+button.omm-filter-expand-trigger:hover {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+/* ── Inline date range expansion panel ── */
+
+.omm-filter-expand-panel {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--size-2-2);
+  margin-bottom: var(--size-4-2);
+  padding: var(--size-4-2) var(--size-4-3);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background: var(--background-secondary);
+  font-size: var(--font-ui-small);
+}
+
+.omm-filter-expand-label {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  white-space: nowrap;
+}
+
+.omm-filter-expand-start,
+.omm-filter-expand-end {
+  flex: 1;
+  min-width: 120px;
+  max-width: 160px;
+  padding: var(--size-2-1) var(--size-2-2);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  font-family: inherit;
+}
+
+.omm-filter-expand-start:focus,
+.omm-filter-expand-end:focus {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 1px var(--interactive-accent);
+  outline: none;
+}
+
+.omm-filter-expand-confirm,
+.omm-filter-expand-cancel {
+  padding: var(--size-2-1) var(--size-4-2);
+  border-radius: var(--radius-s);
+  font-size: var(--font-ui-small);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.omm-filter-expand-confirm {
+  border: 1px solid var(--interactive-accent);
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.omm-filter-expand-confirm:hover {
+  background: var(--interactive-accent-hover);
+  border-color: var(--interactive-accent-hover);
+}
+
+.omm-filter-expand-cancel {
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-muted);
+}
+
+.omm-filter-expand-cancel:hover {
+  border-color: var(--interactive-accent);
+  color: var(--text-normal);
+}
+
+/* ── Focus visible ── */
