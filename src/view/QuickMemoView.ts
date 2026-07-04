@@ -61,6 +61,9 @@ export class QuickMemoView extends ItemView {
     if (Platform.isMobile) {
       this.contentEl.style.paddingBottom = '80px';
     }
+    // Quick-load today's records so the view isn't blank while the full index
+    // rebuilds in the background — the user sees today's content immediately.
+    await this.preloadToday();
     this.render();
     void this.rebuildIndexInBackground();
     // Check once a minute for a local-day rollover while the view stays open.
@@ -110,6 +113,18 @@ export class QuickMemoView extends ItemView {
       this.render();
     } catch (error) {
       this.showFatalError(error);
+    }
+  }
+
+  /** Read and index today's Quick Memo file before the first render so the user
+   *  sees content immediately instead of a blank loading state. */
+  private async preloadToday(): Promise<void> {
+    try {
+      const resolution = await this.resolver.resolve(this.selectedDate);
+      await this.index.addFile(resolution.filePath);
+    } catch {
+      // File doesn't exist or can't be read — perfectly normal for a fresh day.
+      // The index stays empty and the full rebuild will populate it.
     }
   }
 
@@ -618,11 +633,13 @@ function captureFocusRestore(scope: HTMLElement): (() => void) | undefined {
     : el.classList.contains('omm-input') ? '.omm-input'
     : '';
   if (!selector) return undefined;
+  const value = el.value;
   const start = el.selectionStart ?? el.value.length;
   const end = el.selectionEnd ?? el.value.length;
   return () => {
     const next = scope.querySelector(selector) as HTMLInputElement | HTMLTextAreaElement | null;
     if (!next) return;
+    next.value = value;
     next.focus();
     try {
       next.setSelectionRange(start, end);

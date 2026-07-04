@@ -34,6 +34,17 @@ export class IndexService {
     this.mtimes = nextMtimes;
   }
 
+  /** Parse a single file and merge its records into the in-memory index.  Used to
+   *  show today's content immediately before the full rebuild finishes. */
+  async addFile(filePath: string): Promise<void> {
+    const content = await this.vault.read(filePath);
+    const date = dateFromPath(filePath);
+    const parsed = this.parser.parseFile(filePath, date, content, this.parseMode());
+    this.records = sortRecords([...parsed.records, ...this.records], 'asc');
+    this.mtimes.set(filePath, this.vault.stat(filePath)?.mtime ?? 0);
+    // Warnings are not accumulated here — the full rebuild handles them properly.
+  }
+
   async refreshChangedFiles(): Promise<void> {
     const changed = this.indexableMarkdownFiles().filter((filePath) => this.vault.stat(filePath)?.mtime !== this.mtimes.get(filePath));
     if (changed.length === 0) return;
