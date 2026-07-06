@@ -7,7 +7,7 @@ import type { DailyNoteResolver } from '../daily-notes/DailyNoteResolver';
 import { randomIdSuffix } from '../markdown/id';
 import { filterRecordsForView, rollSelectedDate, sortRecordsForDisplay, type ViewFilters } from './viewState';
 import { renderOverview, recordKey } from './render';
-import { Cm6Editor } from '../editor/cm6-editor';
+import { NativeEditor } from '../editor/native-editor';
 
 export class QuickMemoView extends ItemView {
   private selectedDate = today();
@@ -36,8 +36,8 @@ export class QuickMemoView extends ItemView {
   /** Child components created by MarkdownRenderer during a render; unloaded on
    *  the next full re-render so the live markdown rendering doesn't leak. */
   private renderChildren: Component[] = [];
-  /** CM6 Markdown editor for the composer. */
-  private cm6Editor: Cm6Editor | null = null;
+  /** Native Obsidian Markdown editor for the composer. */
+  private editor: NativeEditor | null = null;
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -73,51 +73,41 @@ export class QuickMemoView extends ItemView {
     this.dayWatcher = window.setInterval(() => this.checkDayRollover(), 60_000);
     // Close an open record menu on the next tap/click anywhere outside it.
     activeDocument.addEventListener('pointerdown', this.handleOutsideInteraction, true);
-    // Attach the CM6 Markdown editor after the composer DOM is in the tree.
-    window.requestAnimationFrame(() => { this.initCm6Editor(); });
+    // Attach the native Obsidian Markdown editor after the composer DOM is in the tree.
+    window.requestAnimationFrame(() => { this.initEditor(); });
   }
 
-  /** Wire up the CM6 Markdown editor in the composer host div. */
-  private initCm6Editor(): void {
-    if (this.cm6Editor) return; // already initialized
-    const host = this.contentEl.querySelector<HTMLDivElement>('.omm-cm6-host');
+  /** Wire up the native Obsidian Markdown editor in the composer host div. */
+  private initEditor(): void {
+    if (this.editor) return; // already initialized
+    const host = this.contentEl.querySelector<HTMLDivElement>('.omm-editor-host');
     if (!host) return;
-    // Don't init if host already has an editor child (CM6 re-render protection)
+    // Don't init if host already has an editor child (re-render protection)
     if (host.querySelector('.cm-editor')) return;
 
-    this.cm6Editor = new Cm6Editor(
+    this.editor = new NativeEditor(
       host,
       this.app,
-      () => {
-        // Provide tags from the index, falling back to metadataCache
-        const fromIndex = this.index.tags().map(([t]) => t);
-        if (fromIndex.length > 0) return fromIndex;
-        try {
-          return Object.keys((this.app.metadataCache as any).getTags());
-        } catch {
-          return [];
-        }
-      },
       () => {
         // Cmd/Ctrl+Enter handler — save the current content
         this.saveComposerContent();
       },
     );
 
-    // Attach paste handler on the CM6 editor's DOM for image attachment support.
+    // Attach paste handler on the editor's DOM for image attachment support.
     host.addEventListener('paste', this.handlePaste);
   }
 
-  /** Read the current CM6 content and save it as a new record. */
+  /** Read the current editor content and save it as a new record. */
   private saveComposerContent(): void {
-    if (!this.cm6Editor) return;
-    const raw = this.cm6Editor.getValue();
+    if (!this.editor) return;
+    const raw = this.editor.getValue();
     const content = raw.replace(/\r\n/gu, '\n').trim();
     if (!content) return;
     const typeSelect = this.contentEl.querySelector<HTMLSelectElement>('.omm-type');
     const type = (typeSelect?.value ?? 'memo') as QuickMemoType;
     void this.saveDraft({ type, content });
-    this.cm6Editor.clear();
+    this.editor.clear();
   }
 
   async onClose(): Promise<void> {
@@ -126,9 +116,9 @@ export class QuickMemoView extends ItemView {
       this.dayWatcher = undefined;
     }
     activeDocument.removeEventListener('pointerdown', this.handleOutsideInteraction, true);
-    if (this.cm6Editor) {
-      this.cm6Editor.destroy();
-      this.cm6Editor = null;
+    if (this.editor) {
+      this.editor.destroy();
+      this.editor = null;
     }
   }
 
@@ -267,15 +257,15 @@ export class QuickMemoView extends ItemView {
       },
     }, {
       onSave: (draft) => void this.saveDraft(draft),
-      getComposerValue: () => this.cm6Editor?.getValue() ?? '',
-      clearComposer: () => { this.cm6Editor?.clear(); },
+      getComposerValue: () => this.editor?.getValue() ?? '',
+      clearComposer: () => { this.editor?.clear(); },
       onSelectDate: (date) => {
         this.selectedDate = date;
         this.viewMode = 'date';
         this.dateRange = null;
         this.visibleCount = 50;
-        // Clear the CM6 composer on date switch
-        this.cm6Editor?.clear();
+        // Clear the editor on date switch
+        this.editor?.clear();
         // Only auto-close sidebar on narrow screens / mobile
         if (Platform.isMobile || window.innerWidth <= 900) {
           this.sidebarCollapsed = true;
@@ -407,14 +397,14 @@ export class QuickMemoView extends ItemView {
       });
     }
 
-    // Re-init CM6 editor after render — every render() destroys the old DOM
-    // via the callbacks' innerHTML clearing, so we need to destroy and
-    // recreate the CM6 instance bound to the fresh .omm-cm6-host.
-    if (this.cm6Editor) {
-      this.cm6Editor.destroy();
-      this.cm6Editor = null;
+    // Re-init the native editor after render — every render() destroys the
+    // old DOM via the callbacks' innerHTML clearing, so we need to destroy
+    // and recreate the editor instance bound to the fresh .omm-editor-host.
+    if (this.editor) {
+      this.editor.destroy();
+      this.editor = null;
     }
-    this.initCm6Editor();
+    this.initEditor();
   }
 
   private handlePaste = async (event: ClipboardEvent): Promise<void> => {
@@ -428,7 +418,7 @@ export class QuickMemoView extends ItemView {
         try {
           const fullPath = await this.saveAttachment(file);
           const link = this.formatAttachmentLink(fullPath);
-          this.cm6Editor?.insertAtCursor(link);
+          this.editor?.insertAtCursor(link);
         } catch (err) {
           new Notice('附件保存失败');
           console.error('OhMyMemo attachment save failed:', err);
@@ -638,7 +628,7 @@ export class QuickMemoView extends ItemView {
     try {
       const fullPath = await this.saveAttachment(file);
       const link = this.formatAttachmentLink(fullPath);
-      this.cm6Editor?.insertAtCursor(link);
+      this.editor?.insertAtCursor(link);
     } catch (err) {
       console.error('[OhMyMemo] attachImage failed:', err);
       new Notice(`插入图片失败：${err instanceof Error ? err.message : String(err)}`);
@@ -690,7 +680,7 @@ function captureFocusRestore(scope: HTMLElement): (() => void) | undefined {
     // Check if focused element is inside the CM6 editor
     if (el?.matches('.cm-content') || el?.closest('.cm-editor')) {
       return () => {
-        const host = scope.querySelector<HTMLElement>('.omm-cm6-host');
+        const host = scope.querySelector<HTMLElement>('.omm-editor-host');
         const cmContent = host?.querySelector<HTMLElement>('.cm-content');
         cmContent?.focus();
       };

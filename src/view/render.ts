@@ -277,10 +277,11 @@ function renderMain(container: HTMLElement, state: OverviewState, callbacks: Ove
   attachBtn.title = '插入图片';
   attachBtn.onclick = () => attachInput.click();
 
-  // CM6 Markdown editor — replaces the plain `<textarea>`. The editor is
-  // created by `Cm6Editor` in the view's `initCm6Editor` after the DOM is
-  // rendered.
-  const input = appendEl(composer, 'div', 'omm-cm6-host');
+  // Native Obsidian Markdown editor — created by `NativeEditor` in the
+  // view's `initEditor` after the DOM is rendered. It inherits all Obsidian
+  // editor extensions (easy-typing, EditorSuggest, Live Preview, mobile
+  // toolbar, …) because it IS an Obsidian MarkdownEditor instance.
+  const input = appendEl(composer, 'div', 'omm-editor-host');
   input.style.minHeight = '80px';
 
   const save = appendEl(composer, 'button', 'omm-save', '保存');
