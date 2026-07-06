@@ -7,6 +7,7 @@ import type { DailyNoteResolver } from '../daily-notes/DailyNoteResolver';
 import { randomIdSuffix } from '../markdown/id';
 import { filterRecordsForView, rollSelectedDate, sortRecordsForDisplay, type ViewFilters } from './viewState';
 import { renderOverview, recordKey } from './render';
+import { NativeEditor } from '../editor/native-editor';
 
 export class QuickMemoView extends ItemView {
   private selectedDate = today();
@@ -35,6 +36,8 @@ export class QuickMemoView extends ItemView {
   /** Child components created by MarkdownRenderer during a render; unloaded on
    *  the next full re-render so the live markdown rendering doesn't leak. */
   private renderChildren: Component[] = [];
+  /** Native Obsidian Markdown editor for the composer. */
+  private editor: NativeEditor | null = null;
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -70,6 +73,41 @@ export class QuickMemoView extends ItemView {
     this.dayWatcher = window.setInterval(() => this.checkDayRollover(), 60_000);
     // Close an open record menu on the next tap/click anywhere outside it.
     activeDocument.addEventListener('pointerdown', this.handleOutsideInteraction, true);
+    // Attach the native Obsidian Markdown editor after the composer DOM is in the tree.
+    window.requestAnimationFrame(() => { this.initEditor(); });
+  }
+
+  /** Wire up the native Obsidian Markdown editor in the composer host div. */
+  private initEditor(): void {
+    if (this.editor) return; // already initialized
+    const host = this.contentEl.querySelector<HTMLDivElement>('.omm-editor-host');
+    if (!host) return;
+    // Don't init if host already has an editor child (re-render protection)
+    if (host.querySelector('.cm-editor')) return;
+
+    this.editor = new NativeEditor(
+      host,
+      this.app,
+      () => {
+        // Cmd/Ctrl+Enter handler — save the current content
+        this.saveComposerContent();
+      },
+    );
+
+    // Attach paste handler on the editor's DOM for image attachment support.
+    host.addEventListener('paste', this.handlePaste);
+  }
+
+  /** Read the current editor content and save it as a new record. */
+  private saveComposerContent(): void {
+    if (!this.editor) return;
+    const raw = this.editor.getValue();
+    const content = raw.replace(/\r\n/gu, '\n').trim();
+    if (!content) return;
+    const typeSelect = this.contentEl.querySelector<HTMLSelectElement>('.omm-type');
+    const type = (typeSelect?.value ?? 'memo') as QuickMemoType;
+    void this.saveDraft({ type, content });
+    this.editor.clear();
   }
 
   async onClose(): Promise<void> {
@@ -78,6 +116,10 @@ export class QuickMemoView extends ItemView {
       this.dayWatcher = undefined;
     }
     activeDocument.removeEventListener('pointerdown', this.handleOutsideInteraction, true);
+    if (this.editor) {
+      this.editor.destroy();
+      this.editor = null;
+    }
   }
 
   /**
@@ -215,11 +257,15 @@ export class QuickMemoView extends ItemView {
       },
     }, {
       onSave: (draft) => void this.saveDraft(draft),
+      getComposerValue: () => this.editor?.getValue() ?? '',
+      clearComposer: () => { this.editor?.clear(); },
       onSelectDate: (date) => {
         this.selectedDate = date;
         this.viewMode = 'date';
         this.dateRange = null;
         this.visibleCount = 50;
+        // Clear the editor on date switch
+        this.editor?.clear();
         // Only auto-close sidebar on narrow screens / mobile
         if (Platform.isMobile || window.innerWidth <= 900) {
           this.sidebarCollapsed = true;
@@ -333,8 +379,8 @@ export class QuickMemoView extends ItemView {
         this.selectedDate = `${next.getFullYear()}-${mo}-01`;
         this.render();
       },
-      onAttachFile: (file, textarea) => {
-        void this.attachImage(file, textarea);
+      onAttachFile: (file) => {
+        void this.attachImage(file);
       },
     });
 
@@ -351,9 +397,14 @@ export class QuickMemoView extends ItemView {
       });
     }
 
-    // Attach paste handler for image attachments
-    const input = this.contentEl.querySelector<HTMLTextAreaElement>('.omm-input');
-    if (input) input.addEventListener('paste', this.handlePaste);
+    // Re-init the native editor after render — every render() destroys the
+    // old DOM via the callbacks' innerHTML clearing, so we need to destroy
+    // and recreate the editor instance bound to the fresh .omm-editor-host.
+    if (this.editor) {
+      this.editor.destroy();
+      this.editor = null;
+    }
+    this.initEditor();
   }
 
   private handlePaste = async (event: ClipboardEvent): Promise<void> => {
@@ -367,8 +418,7 @@ export class QuickMemoView extends ItemView {
         try {
           const fullPath = await this.saveAttachment(file);
           const link = this.formatAttachmentLink(fullPath);
-          const textarea = event.target as HTMLTextAreaElement;
-          this.insertAtCursor(textarea, link);
+          this.editor?.insertAtCursor(link);
         } catch (err) {
           new Notice('附件保存失败');
           console.error('OhMyMemo attachment save failed:', err);
@@ -574,13 +624,13 @@ export class QuickMemoView extends ItemView {
     await this.app.workspace.openLinkText(record.filePath, '', false);
   }
 
-  private async attachImage(file: File, textarea: HTMLTextAreaElement): Promise<void> {
+  private async attachImage(file: File): Promise<void> {
     try {
       const fullPath = await this.saveAttachment(file);
       const link = this.formatAttachmentLink(fullPath);
-      this.insertAtCursor(textarea, link);
+      this.editor?.insertAtCursor(link);
     } catch (err) {
-      console.error('[QuickMemo] attachImage failed:', err);
+      console.error('[OhMyMemo] attachImage failed:', err);
       new Notice(`插入图片失败：${err instanceof Error ? err.message : String(err)}`);
     }
   }
@@ -626,7 +676,17 @@ function computeStats(records: QuickMemoRecord[]): { days: number; total: number
  */
 function captureFocusRestore(scope: HTMLElement): (() => void) | undefined {
   const el = activeDocument.activeElement;
-  if (!(el instanceof HTMLInputElement) && !(el instanceof HTMLTextAreaElement)) return undefined;
+  if (!(el instanceof HTMLInputElement) && !(el instanceof HTMLTextAreaElement)) {
+    // Check if focused element is inside the CM6 editor
+    if (el?.matches('.cm-content') || el?.closest('.cm-editor')) {
+      return () => {
+        const host = scope.querySelector<HTMLElement>('.omm-editor-host');
+        const cmContent = host?.querySelector<HTMLElement>('.cm-content');
+        cmContent?.focus();
+      };
+    }
+    return undefined;
+  }
   if (!scope.contains(el)) return undefined;
   const selector = el.classList.contains('omm-search') ? '.omm-search'
     : el.classList.contains('omm-edit-input') ? '.omm-edit-input'

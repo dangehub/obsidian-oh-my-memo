@@ -40,7 +40,7 @@ export interface OverviewState {
   warningCount: number;
   sortDirection: 'asc' | 'desc';
   sidebarCollapsed: boolean;
-  /** Total filtered records (before slicing for lazy load). */
+  /** Number of total filtered records (before lazy load slice). */
   recordsTotal: number;
   /** View mode: 'all', 'date' (single day), or 'range' (date range). */
   viewMode: 'all' | 'date' | 'range';
@@ -58,6 +58,12 @@ export interface OverviewState {
 
 export interface OverviewCallbacks {
   onSave(draft: { type: QuickMemoType; content: string }): void;
+  /** Native CM6 composer: return the current text. When undefined, the renderer
+   *  reads the fallback `<textarea>` directly. */
+  getComposerValue?(): string;
+  /** Native CM6 composer: clear the current text. When undefined, the renderer
+   *  clears the fallback `<textarea>` directly. */
+  clearComposer?(): void;
   onSelectDate(date: string): void;
   onToggleTodo(record: QuickMemoRecord): void;
   onEdit(record: QuickMemoRecord): void;
@@ -83,7 +89,7 @@ export interface OverviewCallbacks {
   onCancelDateRange(): void;
   onHeatmapPrevMonth(): void;
   onHeatmapNextMonth(): void;
-  onAttachFile(file: File, textarea: HTMLTextAreaElement): void;
+  onAttachFile(file: File, editor: HTMLElement): void;
 }
 
 /** Type filter option values, including composite todo-status filters. */
@@ -271,22 +277,22 @@ function renderMain(container: HTMLElement, state: OverviewState, callbacks: Ove
   attachBtn.title = '插入图片';
   attachBtn.onclick = () => attachInput.click();
 
-  // Plain markdown source editor. (The cards below render the markdown; the
-  // composer itself stays a source textarea.)
-  const input = appendEl(composer, 'textarea', 'omm-input');
-  input.placeholder = '输入 Markdown，Cmd/Ctrl + Enter 保存';
+  // Native Obsidian Markdown editor — created by `NativeEditor` in the
+  // view's `initEditor` after the DOM is rendered. It inherits all Obsidian
+  // editor extensions (easy-typing, EditorSuggest, Live Preview, mobile
+  // toolbar, …) because it IS an Obsidian MarkdownEditor instance.
+  const input = appendEl(composer, 'div', 'omm-editor-host');
+  input.style.minHeight = '80px';
 
   const save = appendEl(composer, 'button', 'omm-save', '保存');
   const submit = (): void => {
-    const content = input.value.trim();
+    const raw = callbacks.getComposerValue ? callbacks.getComposerValue() : '';
+    const content = raw.replace(/\r\n/gu, '\n').trim();
     if (!content) return;
     callbacks.onSave({ type: type.value as QuickMemoType, content });
-    input.value = '';
+    if (callbacks.clearComposer) callbacks.clearComposer();
   };
   save.onclick = submit;
-  input.onkeydown = (event: KeyboardEvent) => {
-    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') submit();
-  };
 
   // ── Progressive date filter chip ──
   // Shows when a date or range filter is active. Single-day mode shows [date ✕] [+ 结束日期],

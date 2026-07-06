@@ -1,6 +1,6 @@
 {
   "name": "oh-my-memo",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "description": "Markdown-native Obsidian quick memo plugin",
   "main": "main.js",
   "scripts": {
@@ -21,10 +21,10 @@
   "devDependencies": {
     "@types/node": "^20.14.10",
     "esbuild": "^0.23.0",
+    "jsdom": "^24.1.0",
     "obsidian": "latest",
     "tslib": "^2.6.3",
     "typescript": "^5.5.3",
-    "vitest": "^1.6.0",
-    "jsdom": "^24.1.0"
+    "vitest": "^1.6.0"
   }
 }

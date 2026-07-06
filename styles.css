@@ -1417,3 +1417,179 @@ button.omm-filter-expand-trigger:hover {
 }
 
 /* ── Focus visible ── */
+
+/* ── Composer autocomplete popup ── */
+
+.omm-suggest-popup {
+  position: fixed;
+  z-index: 1000;
+  min-width: 160px;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
+  font-size: var(--font-ui-small);
+}
+
+.omm-suggest-row {
+  padding: 6px 12px;
+  cursor: pointer;
+  color: var(--text-normal);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background-color 80ms ease;
+}
+
+.omm-suggest-row:hover,
+.omm-suggest-row.is-selected {
+  background: var(--background-modifier-hover);
+  color: var(--text-accent);
+}
+
+/* ── Native Obsidian Markdown editor host ── */
+
+.omm-editor-host {
+  position: relative;
+  min-height: 80px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background: var(--background-primary);
+  transition: border-color 0.15s ease;
+  /* Hide overflow embed chrome we don't want */
+  overflow: hidden;
+}
+
+.omm-editor-host:focus-within {
+  border-color: var(--interactive-accent);
+}
+
+/* Hide Obsidian embed chrome that would otherwise pollute the composer:
+   inline-title (first-line title bar on mobile), metadata/properties
+   editor (frontmatter panel), and the embed-link "maximize" button
+   (opens a blank page since we have no source file). Override here in
+   CSS too so the layout collapses even before JS runs hideEmbedChrome. */
+.omm-editor-host .inline-title,
+.omm-editor-host .metadata-container,
+.omm-editor-host .markdown-embed-link {
+  display: none !important;
+}
+
+/* On mobile, Obsidian adds a large padding-top (100px) to .cm-scroller
+   via the rule ".is-phone .mod-root ... .markdown-source-view > .cm-editor
+   > .cm-scroller { padding-top: var(--view-top-spacing-markdown) }" — that
+   spacing is meant to push past the inline-title and metadata header, but
+   since we've hidden those, it just creates a big gap above the text. */
+.is-mobile .omm-editor-host .cm-editor .cm-scroller,
+.is-phone .omm-editor-host .cm-editor .cm-scroller {
+  padding-top: 0 !important;
+}
+
+/* The .cm-editor lives inside the host and fills it. The CM6 theme
+   inherits from Obsidian's theme variables via the .cm-editor parent. */
+.omm-editor-host .cm-editor {
+  outline: none;
+  font-size: var(--font-ui-small);
+  line-height: var(--line-height-normal);
+  color: var(--text-normal);
+  background: transparent;
+}
+
+.omm-editor-host .cm-content {
+  padding: 12px;
+  caret-color: var(--caret-color, var(--text-normal));
+}
+
+/* Placeholder text */
+.omm-editor-host .cm-content .cm-placeholder {
+  color: var(--text-faint);
+  font-style: normal;
+}
+
+/* Selection */
+.omm-editor-host .cm-editor .cm-selectionBackground,
+.omm-editor-host .cm-editor.cm-focused .cm-selectionBackground {
+  background: var(--text-selection, var(--background-modifier-hover)) !important;
+}
+
+/* Cursor */
+.omm-editor-host .cm-editor.cm-focused .cm-cursor {
+  border-left-color: var(--caret-color, var(--text-normal));
+}
+
+/* Active line */
+.omm-editor-host .cm-editor .cm-activeLine {
+  background: var(--background-modifier-hover);
+}
+
+/* Gutters (line numbers — hidden by default) */
+.omm-editor-host .cm-gutters {
+  display: none;
+}
+
+/* Scrollbar styling */
+.omm-editor-host .cm-scroller {
+  overflow: auto;
+  font-family: var(--font-monospace);
+}
+
+/* Markdown syntax highlighting — use Obsidian theme tokens */
+.omm-editor-host .cm-editor .cm-formatting-header { color: var(--text-accent); font-weight: 600; }
+.omm-editor-host .cm-editor .cm-header { color: var(--text-normal); font-weight: 600; }
+.omm-editor-host .cm-editor .cm-strong { font-weight: 700; color: var(--text-normal); }
+.omm-editor-host .cm-editor .cm-em { font-style: italic; color: var(--text-normal); }
+.omm-editor-host .cm-editor .cm-strikethrough { text-decoration: line-through; color: var(--text-muted); }
+.omm-editor-host .cm-editor .cm-url { color: var(--text-accent); text-decoration: underline; }
+.omm-editor-host .cm-editor .cm-link { color: var(--text-accent); }
+.omm-editor-host .cm-editor .cm-comment { color: var(--text-muted); font-style: italic; }
+.omm-editor-host .cm-editor .cm-quote { color: var(--text-muted); border-left: 3px solid var(--background-modifier-border); padding-left: 8px; }
+.omm-editor-host .cm-editor .cm-list { color: var(--text-normal); }
+.omm-editor-host .cm-editor .cm-hr { color: var(--text-muted); border-top: 1px solid var(--background-modifier-border); }
+.omm-editor-host .cm-editor .cm-image-marker { color: var(--text-accent); }
+.omm-editor-host .cm-editor .cm-formatting-list { color: var(--text-muted); }
+
+/* Syntax highlight for inline code and code blocks */
+.omm-editor-host .cm-editor .cm-inlineCode { background: var(--code-background, var(--background-secondary)); color: var(--code-normal, var(--text-normal)); padding: 0 4px; border-radius: var(--radius-s); font-family: var(--font-monospace); }
+.omm-editor-host .cm-editor .cm-codeBlock { background: var(--code-background, var(--background-secondary)); color: var(--code-normal, var(--text-normal)); font-family: var(--font-monospace); }
+
+/* Autocomplete popup styling (CM6's own .cm-tooltip-autocomplete) */
+.omm-editor-host .cm-editor .cm-tooltip-autocomplete {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  font-size: var(--font-ui-small);
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 1000;
+  background: var(--background-primary);
+}
+.omm-editor-host .cm-editor .cm-tooltip-autocomplete ul li {
+  padding: 8px 12px;
+  color: var(--text-normal);
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.omm-editor-host .cm-editor .cm-tooltip-autocomplete ul li[aria-selected] {
+  background: var(--background-modifier-hover);
+  color: var(--text-accent);
+}
+.omm-editor-host .cm-editor .cm-tooltip-autocomplete ul li .cm-completionLabel {
+  flex: 1;
+}
+.omm-editor-host .cm-editor .cm-tooltip-autocomplete ul li .cm-completionDetail {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+/* Mobile: ensure the autocomplete popup is big enough to tap comfortably */
+.is-mobile .omm-editor-host .cm-editor .cm-tooltip-autocomplete ul li {
+  padding: 10px 14px;
+  min-height: 40px;
+}
+.is-mobile .omm-editor-host .cm-editor .cm-tooltip-autocomplete {
+  max-height: 300px;
+}
