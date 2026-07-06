@@ -19,12 +19,19 @@
   "author": "dangehub",
   "license": "MIT",
   "devDependencies": {
+    "@codemirror/autocomplete": "^6.20.3",
+    "@codemirror/commands": "^6.10.4",
+    "@codemirror/lang-markdown": "^6.5.0",
+    "@codemirror/language": "^6.12.4",
+    "@codemirror/state": "^6.7.1",
+    "@codemirror/view": "^6.43.6",
+    "@lezer/highlight": "^1.2.3",
     "@types/node": "^20.14.10",
     "esbuild": "^0.23.0",
+    "jsdom": "^24.1.0",
     "obsidian": "latest",
     "tslib": "^2.6.3",
     "typescript": "^5.5.3",
-    "vitest": "^1.6.0",
-    "jsdom": "^24.1.0"
+    "vitest": "^1.6.0"
   }
 }

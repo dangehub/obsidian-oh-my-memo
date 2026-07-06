@@ -17,3 +17,4 @@ obsidian-quick-memo/
 # Generated README exports
 *.html
 
+.claude/

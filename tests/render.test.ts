@@ -35,7 +35,7 @@ describe('renderOverview', () => {
     expect(root.textContent).toContain('Think clearly');
     expect(root.textContent).toContain('idea #a');
     expect(root.textContent).toContain('#a');
-    expect(root.querySelector<HTMLTextAreaElement>('.omm-input')?.placeholder).toContain('Markdown');
+    expect(root.querySelector('.omm-cm6-host')).toBeTruthy();
     expect(root.querySelectorAll('.omm-heatmap-month-header')).toHaveLength(0);
     const dayCells = root.querySelectorAll('.omm-heatmap-day');
     // Single-month view: June 2026 has 30 active days.
