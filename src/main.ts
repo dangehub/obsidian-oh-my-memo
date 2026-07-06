@@ -125,11 +125,18 @@ export default class QuickMemoPlugin extends Plugin {
   async activateView(): Promise<void> {
     const { workspace } = this.app;
     // Reuse an existing OhMyMemo leaf if one is open, so we don't reset a leaf
-    // the user may have moved.
+    // the user may have moved — BUT only if it's already in the main content
+    // area (root split). A leaf stranded in a sidebar (e.g. from a saved mobile
+    // workspace layout) is detached so we can re-open it in the main area like
+    // a regular note.
     const existing = workspace.getLeavesOfType(VIEW_TYPE_OH_MY_MEMO)[0];
     if (existing) {
-      await workspace.revealLeaf(existing);
-      return;
+      if (existing.getRoot() === workspace.rootSplit) {
+        await workspace.revealLeaf(existing);
+        return;
+      }
+      // The leaf is in a sidebar — detach it and re-open in the main area below.
+      await existing.detach();
     }
     // Open in the main content area as a tab (works on both desktop & mobile).
     const leaf = workspace.getLeaf('tab');
