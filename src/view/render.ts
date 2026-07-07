@@ -67,7 +67,7 @@ export interface OverviewCallbacks {
   onSelectDate(date: string): void;
   onToggleTodo(record: QuickMemoRecord): void;
   onEdit(record: QuickMemoRecord): void;
-  onSaveEdit(record: QuickMemoRecord, changes: { type: QuickMemoType; content: string; body?: string }): void;
+  onSaveEdit(record: QuickMemoRecord): void;
   onCancelEdit(): void;
   onDelete(record: QuickMemoRecord): void;
   onCopyBlock(record: QuickMemoRecord): void;
@@ -525,18 +525,13 @@ function renderRecord(list: HTMLElement, record: QuickMemoRecord, editing: boole
     }
     editType.value = record.type;
 
-    const editor = appendEl(card, 'textarea', 'omm-edit-input');
-    editor.value = record.body ? `${record.content}\n${record.body}` : record.content;
+    const editor = appendEl(card, 'div', 'omm-edit-editor-host');
+    editor.style.minHeight = '80px';
     window.setTimeout(() => editor.focus(), 0);
 
     const editActions = appendDiv(card, 'omm-record-actions');
     (appendEl(editActions, 'button', '', '保存')).onclick = () => {
-      const [content, ...bodyLines] = editor.value.replace(/\r\n/gu, '\n').split('\n');
-      callbacks.onSaveEdit(record, {
-        type: editType.value as QuickMemoType,
-        content: content.trim(),
-        body: bodyLines.join('\n') || undefined,
-      });
+      callbacks.onSaveEdit(record);
     };
     (appendEl(editActions, 'button', '', '取消')).onclick = () => callbacks.onCancelEdit();
     return;

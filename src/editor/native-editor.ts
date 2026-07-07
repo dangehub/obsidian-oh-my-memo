@@ -146,6 +146,19 @@ export class NativeEditor {
     } catch { /* embed-link may not exist */ }
   }
 
+  /** Set the editor content to the given text. */
+  setValue(value: string): void {
+    if (this.editMode?.set) {
+      try {
+        this.editMode.set(value);
+        return;
+      } catch {
+        /* fall through */
+      }
+    }
+    if (this.editor) this.editor.setValue(value);
+  }
+
   /** Returns the current editor content as plain text. */
   getValue(): string {
     if (this.editMode?.get) {

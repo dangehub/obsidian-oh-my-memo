@@ -1530,13 +1530,89 @@ button.omm-filter-expand-trigger:hover {
   display: none;
 }
 
-/* Scrollbar styling */
-.omm-editor-host .cm-scroller {
+/* ── Inline edit editor (editing an existing record) ── */
+
+.omm-edit-editor-host {
+  position: relative;
+  min-height: 80px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background: var(--background-primary);
+  transition: border-color 0.15s ease;
+  overflow: hidden;
+}
+
+.omm-edit-editor-host:focus-within {
+  border-color: var(--interactive-accent);
+}
+
+/* Hide embed chrome children */
+.omm-edit-editor-host .inline-title,
+.omm-edit-editor-host .metadata-container,
+.omm-edit-editor-host .markdown-embed-link {
+  display: none !important;
+}
+
+/* Mobile padding fix */
+.is-mobile .omm-edit-editor-host .cm-editor .cm-scroller,
+.is-phone .omm-edit-editor-host .cm-editor .cm-scroller {
+  padding-top: 0 !important;
+}
+
+/* CM6 editor styling */
+.omm-edit-editor-host .cm-editor {
+  outline: none;
+  font-size: var(--font-ui-small);
+  line-height: var(--line-height-normal);
+  color: var(--text-normal);
+  background: transparent;
+  min-height: 80px;
+}
+
+.omm-edit-editor-host .cm-scroller {
+  min-height: 80px;
   overflow: auto;
   font-family: var(--font-monospace);
 }
 
-/* Markdown syntax highlighting — use Obsidian theme tokens */
+.omm-edit-editor-host .cm-content {
+  padding: 12px;
+  caret-color: var(--caret-color, var(--text-normal));
+  min-height: calc(80px - 24px);
+}
+
+.omm-edit-editor-host .cm-gutters {
+  display: none;
+}
+
+/* Selection background */
+.omm-edit-editor-host .cm-editor .cm-selectionBackground,
+.omm-edit-editor-host .cm-editor.cm-focused .cm-selectionBackground {
+  background: var(--text-selection, var(--background-modifier-hover)) !important;
+}
+
+/* Cursor */
+.omm-edit-editor-host .cm-editor.cm-focused .cm-cursor {
+  border-left-color: var(--caret-color, var(--text-normal));
+}
+
+/* Active line */
+.omm-edit-editor-host .cm-editor .cm-activeLine {
+  background: var(--background-modifier-hover);
+}
+
+/* Markdown syntax highlighting — reuse composer tokens */
+.omm-edit-editor-host .cm-editor .cm-formatting-header { color: var(--text-accent); font-weight: 600; }
+.omm-edit-editor-host .cm-editor .cm-header { color: var(--text-normal); font-weight: 600; }
+.omm-edit-editor-host .cm-editor .cm-strong { font-weight: 700; color: var(--text-normal); }
+.omm-edit-editor-host .cm-editor .cm-em { font-style: italic; color: var(--text-normal); }
+.omm-edit-editor-host .cm-editor .cm-strikethrough { text-decoration: line-through; color: var(--text-muted); }
+.omm-edit-editor-host .cm-editor .cm-url { color: var(--text-accent); text-decoration: underline; }
+.omm-edit-editor-host .cm-editor .cm-link { color: var(--text-accent); }
+.omm-edit-editor-host .cm-editor .cm-comment { color: var(--text-muted); font-style: italic; }
+.omm-edit-editor-host .cm-editor .cm-quote { color: var(--text-muted); border-left: 3px solid var(--background-modifier-border); padding-left: 8px; }
+
+/* ── Markdown syntax highlighting ── */
 .omm-editor-host .cm-editor .cm-formatting-header { color: var(--text-accent); font-weight: 600; }
 .omm-editor-host .cm-editor .cm-header { color: var(--text-normal); font-weight: 600; }
 .omm-editor-host .cm-editor .cm-strong { font-weight: 700; color: var(--text-normal); }

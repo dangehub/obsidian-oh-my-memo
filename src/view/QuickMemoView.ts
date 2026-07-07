@@ -38,6 +38,8 @@ export class QuickMemoView extends ItemView {
   private renderChildren: Component[] = [];
   /** Native Obsidian Markdown editor for the composer. */
   private editor: NativeEditor | null = null;
+  /** Native Obsidian Markdown editor for inline record editing. */
+  private editEditor: NativeEditor | null = null;
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -125,6 +127,72 @@ export class QuickMemoView extends ItemView {
     host.addEventListener('paste', this.handlePaste);
   }
 
+  /** Wire up an inline NativeEditor for editing an existing record. */
+  private initEditEditor(): void {
+    // Destroy previous instance if any
+    if (this.editEditor) {
+      this.editEditor.destroy();
+      this.editEditor = null;
+    }
+    const host = this.contentEl.querySelector<HTMLDivElement>('.omm-edit-editor-host');
+    if (!host) return;
+    // Don't init if host already has an editor child
+    if (host.querySelector('.cm-editor')) return;
+
+    // Determine which record is being edited to set initial content
+    const record = this.findEditingRecord();
+    const initialContent = record?.body
+      ? `${record.content}\n${record.body}`
+      : (record?.content ?? '');
+
+    this.editEditor = new NativeEditor(
+      host,
+      this.app,
+      () => {
+        // Cmd/Ctrl+Enter handler — save the current record
+        if (this.editingRecordId !== undefined && record?.id) {
+          void this.saveEdit(record);
+        }
+      },
+    );
+
+    // Set the initial content after creation
+    this.editEditor.setValue(initialContent);
+
+    // Click-forwarding: clicking blank space in the host div focuses CM6
+    host.addEventListener("click", (e: MouseEvent) => {
+      if ((e.target as HTMLElement).closest(".cm-content")) return;
+      const cmContent = host.querySelector<HTMLElement>(".cm-content");
+      if (cmContent) {
+        e.preventDefault();
+        cmContent.focus();
+      }
+    });
+
+    // Scroll guard: prevent CM6 auto-focus from scrolling the page
+    const savedScrollTop = this.contentEl.scrollTop;
+    const guard = (): void => {
+      if (this.contentEl.scrollTop > 0) {
+        this.contentEl.scrollTop = savedScrollTop;
+      }
+    };
+    const runGuard = (): void => {
+      guard();
+      if (Date.now() - guardStart < 600) {
+        window.requestAnimationFrame(runGuard);
+      }
+    };
+    const guardStart = Date.now();
+    window.requestAnimationFrame(runGuard);
+  }
+
+  /** Find the record currently being edited by scanning rendered state. */
+  private findEditingRecord(): QuickMemoRecord | undefined {
+    if (this.editingRecordId === undefined) return undefined;
+    const allRecords = this.index.query({});
+    return allRecords.find((r) => recordKey(r) === this.editingRecordId);
+  }
+
   /** Read the current editor content and save it as a new record. */
   private saveComposerContent(): void {
     if (!this.editor) return;
@@ -143,6 +211,10 @@ export class QuickMemoView extends ItemView {
       this.dayWatcher = undefined;
     }
     activeDocument.removeEventListener('pointerdown', this.handleOutsideInteraction, true);
+    if (this.editEditor) {
+      this.editEditor.destroy();
+      this.editEditor = null;
+    }
     if (this.editor) {
       this.editor.destroy();
       this.editor = null;
@@ -308,8 +380,12 @@ export class QuickMemoView extends ItemView {
         this.editingRecordId = recordKey(record);
         this.render();
       },
-      onSaveEdit: (record, changes) => void this.saveEdit(record, changes),
+      onSaveEdit: (record) => void this.saveEdit(record),
       onCancelEdit: () => {
+        if (this.editEditor) {
+          this.editEditor.destroy();
+          this.editEditor = null;
+        }
         this.editingRecordId = undefined;
         this.render();
       },
@@ -432,6 +508,7 @@ export class QuickMemoView extends ItemView {
       this.editor = null;
     }
     this.initEditor();
+    this.initEditEditor();
   }
 
   private handlePaste = async (event: ClipboardEvent): Promise<void> => {
@@ -611,12 +688,28 @@ export class QuickMemoView extends ItemView {
     this.render();
   }
 
-  private async saveEdit(record: QuickMemoRecord, changes: { type: QuickMemoType; content: string; body?: string }): Promise<void> {
+  private async saveEdit(record: QuickMemoRecord): Promise<void> {
     if (!record.id) {
       new Notice('该记录缺少块 ID，请先补全 ID 后再编辑。');
       return;
     }
-    await this.repository.updateRecord(record.id, changes);
+    // Read content from the inline NativeEditor
+    const raw = this.editEditor?.getValue() ?? '';
+    const [firstLine, ...bodyLines] = raw.replace(/\r\n/gu, '\n').split('\n');
+    const typeSelect = this.contentEl.querySelector<HTMLSelectElement>('.omm-edit-type');
+    const type = (typeSelect?.value ?? 'memo') as QuickMemoType;
+
+    await this.repository.updateRecord(record.id, {
+      type,
+      content: firstLine.trim(),
+      body: bodyLines.join('\n') || undefined,
+    });
+
+    // Destroy the edit editor before re-render
+    if (this.editEditor) {
+      this.editEditor.destroy();
+      this.editEditor = null;
+    }
     this.editingRecordId = undefined;
     await this.index.rebuild();
     this.render();
@@ -707,16 +800,19 @@ function captureFocusRestore(scope: HTMLElement): (() => void) | undefined {
     // Check if focused element is inside the CM6 editor
     if (el?.matches('.cm-content') || el?.closest('.cm-editor')) {
       return () => {
+        // Try composer editor first, then inline edit editor
         const host = scope.querySelector<HTMLElement>('.omm-editor-host');
         const cmContent = host?.querySelector<HTMLElement>('.cm-content');
-        cmContent?.focus();
+        if (cmContent) { cmContent.focus(); return; }
+        const editHost = scope.querySelector<HTMLElement>('.omm-edit-editor-host');
+        const editContent = editHost?.querySelector<HTMLElement>('.cm-content');
+        editContent?.focus();
       };
     }
     return undefined;
   }
   if (!scope.contains(el)) return undefined;
   const selector = el.classList.contains('omm-search') ? '.omm-search'
-    : el.classList.contains('omm-edit-input') ? '.omm-edit-input'
     : el.classList.contains('omm-input') ? '.omm-input'
     : '';
   if (!selector) return undefined;
