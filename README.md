@@ -1,225 +1,114 @@
-# Quick Memo — Obsidian micro-memo plugin
+# OhMyMemo
 
-**English:** Quick Memo is a Markdown-native Obsidian plugin for fast daily capture of micro-records (闪念/待办). Database-free — your daily note Markdown file is the single source of truth. Records are stored as plain list items under a configurable heading inside your existing diary files. An in-memory index powers search, filters, tags, and a 90-day activity heatmap.
+一个 Markdown 原生的 Obsidian 快速记录插件。不依赖数据库，记录直接写入你的日记文件——你的 `.md` 文件就是唯一数据源。
 
-**中文：** 一个 Markdown 原生的 Obsidian 闪念/待办快速记录插件，类似 Thino 的轻量捕获体验。**不依赖任何数据库**——你的日记 `.md` 文件就是唯一数据源。记录直接写入你现有的日记文件中（可配置标题、写入位置、处理范围），并维护可随时重建的内存索引。
+![OhMyMemo 桌面端](imgs/screenshot-desktop.png)
 
----
+## 为什么做这个
 
-## 一、核心功能
+类似 Thino 的快速捕获体验，但数据不锁在插件里。记录就是日记文件里某个标题下的普通 Markdown 列表，用任何编辑器都能直接看、直接改。插件只负责读写这个区域、维护一个可随时重建的内存索引来支撑搜索、筛选和热力图。
 
-- **直接写入日记**：记录写入你现有的日记文件（如 `2026-06-30.md`），不再生成独立文件
-- **可配置存储**：指定标题（如 `### memos`）、写入位置（标题下/日记末尾）、处理范围（仅标题内/整篇日记）
-- **全部记录视图**：默认按日期分组显示所有记录，支持懒加载（每 50 条）
-- **输入区**：文本区直接输入 Markdown，`Cmd/Ctrl+Enter` 保存，支持粘贴图片附件
-- **附件管理**：图片粘贴上传，链接格式可配置（Wiki/Markdown，路径简写/相对/绝对），默认跟随 Obsidian 全局设置
-- **待办管理**：`- [ ]` / `- [x]` 勾选回写文件
-- **筛选搜索**：按类型/标签/关键词筛选，搜索不打断中文输入法
-- **热力图**：近 90 天活动热力图，点击日期跳转
-- **标签系统**：自动提取 `#tag`，支持按标签筛选和批量删除
-- **操作菜单**：每条记录 `⋮` 菜单支持编辑/删除/复制块链接/打开源文件
-- **跨午夜自动刷新**：停留在「今天」时自动滚动到新日期
+## 安装
 
-### 移动端
+### 从 GitHub Release 安装
 
-- **抽屉侧边栏**：≤900px 侧边栏变为从左侧滑入的遮罩抽屉，类似 Thino
-- **顶部导航栏**：☰ 按钮 + 标题 + 排序按钮，始终可见
-- **图片灯箱**：点击图片全屏查看，支持滚轮/双指缩放 (0.5x–5x)，双击切换
+1. 到 [Releases 页面](https://github.com/dangehub/obsidian-oh-my-memo/releases) 下载最新版的 `main.js`、`manifest.json`、`styles.css` 三个文件
+2. 在你的 vault 里创建文件夹 `.obsidian/plugins/oh-my-memo/`
+3. 把三个文件放进去
+4. Obsidian → 设置 → 第三方插件 → 关闭安全模式 → 启用 **OhMyMemo**
 
-### 格式兼容
-
-- 兼容 **Tab 缩进**、**2 空格缩进** 的多行续行（Thino 迁移数据）
-- 兼容 **blockquote/callout**（`> [!type]`）续行（QQ 空间导入数据）
-- 多行记录块 ID 自动从尾部提取
-
----
-
-## 二、安装方式
-
-### 方式 A：手动安装（本压缩包已包含运行所需文件）
-
-本压缩包内的 `aqu-quick-memos` 文件夹已经包含 Obsidian 加载插件所需的全部文件：
-
-```
-aqu-quick-memos/
-├── manifest.json
-├── main.js
-└── styles.css
-```
-
-安装步骤：
-
-1. 解压本压缩包，得到 `aqu-quick-memos` 文件夹；
-2. 把这个文件夹整个复制到你 vault 的插件目录：
-   ```
-   <你的vault>/.obsidian/plugins/aqu-quick-memos/
-   ```
-   如果 `.obsidian/plugins` 目录不存在，手动创建即可；
-3. 打开 Obsidian → 设置 → 第三方插件（Community plugins）；
-4. 关闭「安全模式」（如果尚未关闭）；
-5. 在已安装插件列表里找到 **Quick Memo**，打开开关启用它；
-6. 启用后，左侧栏会出现一个笔记本图标（notebook-pen），点击即可打开 Quick Memo 总览面板。
-
-> 说明：`main.js`、`styles.css`、`manifest.json` 这三个文件必须放在同一个名为 `aqu-quick-memos` 的文件夹里，文件夹名要与 `manifest.json` 中的 `id` 一致，否则 Obsidian 无法识别。
-
-### 方式 B：从源码构建（开发者）
+### 从源码构建
 
 ```bash
 npm install
-npm run build          # 生成 main.js
+npm run build
 ```
 
-然后将 `manifest.json`、`main.js`、`styles.css` 复制到 vault 的插件目录即可。
+把生成的 `main.js`、`manifest.json`、`styles.css` 复制到插件目录即可。
 
----
+## 用法
 
-## 三、使用方式
+点左侧栏的笔记本图标，或用命令面板执行 `OhMyMemo: Open overview` 打开主面板。面板在主内容区以标签页打开，和普通笔记一样。
 
-### 1. 打开面板
+**记录流程：** 输入区选类型（闪念/待办）→ 写 Markdown → `Cmd/Ctrl+Enter` 或点保存 → 内容写入当天日记文件的指定标题下，列表即时刷新。
 
-- 点击左侧栏的 Quick Memo 图标；
-- 或执行命令 `Quick Memo: Open overview`（`Ctrl/Cmd + P` 搜索）。
+**编辑器：** 使用 Obsidian 原生 Markdown 编辑器（Live Preview），自动继承你安装的所有编辑器扩展（如 easy-typing），不需要额外配置。支持粘贴图片附件，链接格式跟随 Obsidian 全局设置。
 
-移动端：顶部 ☰ 按钮唤出侧边栏抽屉。
+**浏览记录：** 默认显示全部记录，按日期分组。点日历某天切到单日视图，点「显示全部」回去。热力图展示活动趋势，点击日期跳转。
 
-### 2. 新建记录
+**卡片操作：** 每条记录右上角 `⋮` 菜单 → 编辑 / 复制块链接 / 打开源文件 / 删除。待办直接点勾选框切换状态，自动回写文件。
 
-1. 输入区选择类型：普通 / 待办；
-2. 输入 Markdown 内容，支持多行（`Enter` 换行）；
-3. 点击「保存」或按 `Cmd/Ctrl + Enter`。
+**筛选：** 按类型、标签、关键词筛选。搜索回车触发，不打断中文输入法。
 
-内容写入当天日记文件中（位置取决于「写入位置」设置）。
+**移动端：** 侧边栏变为从左侧滑入的抽屉，顶部有导航栏，图片支持灯箱缩放。
 
-### 3. Markdown 格式
+## 设置
 
-```
+| 设置项 | 说明 |
+|---|---|
+| Memos 标题 | 插件读写的标题，默认 `### memos`，支持任意层级 |
+| 写入位置 | 新记录插入位置：标题下 / 日记末尾 |
+| 处理范围 | 扫描范围：仅标题内 / 整篇日记（兼容历史数据中标题不一致的情况） |
+| 自定义日记路径 | 开启后按指定文件夹和日期格式定位日记文件 |
+| 启用块 ID | 开启后每条记录带 `^omm-` 块 ID，支撑编辑/删除/勾选/块链接；关闭则进入纯 Markdown 模式 |
+| 附件存放路径 | 五种模式：遵循 Obsidian 设置 / vault 根目录 / 同目录 / 子目录 / 自定义 |
+| 链接语法 | Wiki / Markdown / 遵循 Obsidian |
+| 链接路径格式 | 简写 / 相对 / 绝对 / 遵循 Obsidian |
+| 启动时打开 | Obsidian 启动时自动打开面板（默认关闭） |
+
+## 数据格式
+
+记录直接写入日记文件，默认标题 `### memos`：
+
+```markdown
 ### memos
 
-- 09:12 单行记录 #灵感 ^oqm-20260621-091200-a1b2
+- 09:12 记录内容 #灵感 ^omm-20260621-091200-a1b2
+- [ ] 10:20 待办事项 #todo ^omm-20260621-102000-c3d4
+- [x] 11:00 已完成 ^omm-20260621-110000-e5f6
 - 22:05
   多行记录第一行
-  多行续行 ^oqm-20260630-220500-x1y2
-- [ ] 10:20 待办事项 #todo ^oqm-...
-- [x] 11:00 已完成 ^oqm-...
-- 20:47
-> [!microblog] ![](avatar.png) text · 20:47
-> 你好
+  多行续行 ^omm-20260630-220500-x1y2
 ```
 
 - 普通记录：`- HH:MM 内容`
 - 多行记录：首行 `- HH:MM`，续行缩进（2 空格 / Tab / `> ` 均可）
 - 待办：`- [ ]` / `- [x]`
-- `^oqm-…` 为可选块 ID，用于编辑/删除/勾选/块链接
+- `^omm-…` 为可选块 ID
 
-### 4. 卡片操作
+卸载插件后，记录就是普通 Markdown 文本，留在日记文件里不会丢失。
 
-每条记录右上角 `⋮` → 编辑 / 复制块链接 / 打开源文件 / 删除。待办可直接点击左侧勾选框切换状态。
-
-### 5. 筛选与搜索
-
-侧边栏（桌面）或抽屉（移动端）提供：
-
-- **类型**：全部 / 普通 / 待办 / 已完成 / 未完成
-- **搜索**：回车触发，不打断中文输入法
-- **标签**：点击筛选，右键删除标签
-
-### 6. 排序与懒加载
-
-- 排序按钮 ↑↓ 切换最新/最早在上
-- 初始显示 50 条，底部「加载更多」每次追加 50 条
-
-### 7. 全部记录视图
-
-默认显示所有日期的记录，按日期分组。点击热力图某天可切到单日时间线，点击「显示全部」返回。
-
-面板会每分钟检查一次本地日期；如果你正停留在「今天」，跨过午夜后会自动滚动到新的一天，不会打断你正在浏览的历史日期。
-
----
-
-## 四、设置项
-
-| 设置 | 说明 |
-| --- | --- |
-| 用户名称 / Slogan / 头像 | 侧边栏个人信息 |
-| Memos 标题 | 插件读写的标题，默认 `### memos` |
-| 写入位置 | 新记录插入位置：标题下 / 日记末尾 |
-| 处理范围 | 扫描范围：仅标题内 / 整篇日记（兼容不同标题的历史数据） |
-| 使用自定义日记路径 | 开启后按下方文件夹和格式定位 |
-| 日记文件夹 / 日期格式 | 自定义日记路径，如 `101-日记/YYYY/YYYY-MM-DD` |
-| 启用块 ID | 默认开启，关闭后进入纯净 Markdown 模式 |
-| 记录排序 | 最新在上 / 最早在上 |
-| 附件存放路径 | 五种模式（含「遵循 Obsidian 设置」） |
-| 链接语法 | Wiki / Markdown / 遵循 Obsidian |
-| 链接路径格式 | 简写 / 相对 / 绝对 / 遵循 Obsidian |
-| 启动时打开 | 是否在 Obsidian 启动时自动打开面板（默认关闭） |
-
----
-
-## 五、特点
-
-- **Markdown 原生，无数据库**：文件即数据，索引可随时重建
-- **写入现有日记**：不生成独立文件，与你现有的日记文件共存
-- **可配置范围**：标题/写入位置/处理范围均可自定义
-- **格式兼容**：2 空格缩进、Tab 缩进、blockquote/callout 续行均支持
-- **移动端友好**：抽屉侧边栏、顶部导航栏、图片灯箱缩放
-- **本地日期**：使用本地时间，不会 UTC 跨天错位
-- **主题自适应**：样式使用 Obsidian 主题变量，自动跟随亮色/暗色主题
-- **可测试**：核心逻辑（解析器、索引、仓库、渲染）有 72 个单元测试覆盖
-
----
-
-## 六、命令
+## 命令
 
 | 命令 | 作用 |
-| --- | --- |
-| Quick Memo: Open Quick Memo overview | 打开总览面板 |
-| Quick Memo: Rebuild Quick Memo index | 手动重建索引 |
-| Quick Memo: Backfill missing Quick Memo block IDs for today | 为今天缺少块 ID 的记录补全 ID |
+|---|---|
+| OhMyMemo: Open overview | 打开主面板 |
+| OhMyMemo: Rebuild index | 手动重建内存索引 |
+| OhMyMemo: Backfill missing block IDs for today | 为今天缺少块 ID 的记录补全 |
 
----
-
-## 七、数据存储
-
-记录直接写入你的日记文件（如 `101-日记/2026/2026-06-30.md`），默认标题 `### memos`，格式：
-
-```
-### memos
-
-- 09:12 记录内容 ^oqm-...
-- [ ] 10:20 待办 #tag ^oqm-...
-```
-
-写入位置和处理范围可在设置中调整。插件配置存于 `<vault>/.obsidian/plugins/aqu-quick-memos/data.json`。
-
-卸载插件后，已写入的 Markdown 记录保留在日记文件中，不会丢失。
-
----
-
-## 八、技术信息
+## 技术信息
 
 - 最低 Obsidian 版本：1.7.2
 - 桌面端 / 移动端均可使用
-- 作者：dangehub
-- 72 个单元测试覆盖核心逻辑
+- 样式使用 Obsidian 主题变量，自动跟随亮色/暗色主题
+- 日期一律使用本地时间，不会 UTC 跨天错位
+- 核心逻辑（解析器、索引、仓库、渲染）有 72 个单元测试覆盖
 
----
+## 开发
 
-## 九、FAQ
+```bash
+npm run typecheck     # 类型检查
+npm test              # 运行测试
+npm run build         # 类型检查 + 编译生成 main.js
+npm run dev           # watch 模式编译
+```
 
-**Q：为什么改了标题后记录都不见了？**
-A：设置 →「处理范围」切到「整篇日记」即可扫描所有标题下的记录。
+架构上 `main.ts` 只做组装，业务逻辑分布在几个独立服务里：`DailyNoteResolver`（日期→文件路径）、`QuickMemoParser`（Markdown 解析/序列化）、`MarkdownRecordRepository`（文件读写）、`IndexService`（内存索引）。UI 层 `QuickMemoView` + `render.ts` 只通过接口和服务层通信，不直接碰文件。所有服务依赖 `VaultLike` 接口而非 Obsidian 的 `Vault`，所以核心逻辑可以在 jsdom 里跑单元测试。
 
-**Q：历史日记里标题不一样怎么办？**
-A：将「处理范围」设为「整篇日记」，插件会扫描文件中所有符合格式的记录。
+## 关于这个插件的构建方式
 
-**Q：勾选待办后文件里会同步吗？**
-A：会。勾选自动把 `- [ ]` 改写成 `- [x]`（需记录有块 ID）。
+这个插件的绝大部分代码是通过 AI 辅助编程（vibe coding）完成的——从架构设计到具体实现到测试编写，都重度依赖了 LLM。虽然核心逻辑有单元测试覆盖，且经过了实际使用验证，但 AI 生成的代码可能存在未发现的边界情况问题。如果你在使用中遇到异常行为，欢迎在 [Issues](https://github.com/dangehub/obsidian-oh-my-memo/issues) 里反馈。
 
-**Q：卸载插件会丢数据吗？**
-A：不会。所有记录都是普通 Markdown，留在日记文件里。
+## 致谢
 
----
-
-## 十、致谢
-
-本项目基于 [swz-quick-memos](https://github.com/songwz/swz-quick-memos) 二次开发（fork）。感谢原作者 [songwz](https://github.com/songwz) 提供的优秀基础架构与设计理念。
+本项目基于 [swz-quick-memos](https://github.com/songwz/swz-quick-memos) 二次开发。感谢原作者 [songwz](https://github.com/songwz) 提供的基础架构与设计理念。
