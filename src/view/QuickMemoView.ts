@@ -94,6 +94,32 @@ export class QuickMemoView extends ItemView {
       },
     );
 
+    // CM6 auto-focuses its contentDOM on creation. The browser's default
+    // focus-scroll then scrolls the nearest scrollable ancestor (this.contentEl,
+    // potentially 30000+px tall with many record cards) to centre the editor —
+    // launching the page to the middle. We prevent this by repeatedly blurring
+    // the cm-content element and resetting scrollTop until CM6's async focus
+    // cycle completes (~400ms). After that the user can click to focus normally.
+    const container = this.contentEl;
+    const guard = (): void => {
+      const cmContent = container.querySelector<HTMLElement>('.omm-editor-host .cm-content');
+      if (cmContent && document.activeElement === cmContent) {
+        cmContent.blur();
+      }
+      if (container.scrollTop > 0) {
+        container.scrollTop = 0;
+      }
+    };
+    // Run guard on every animation frame for ~600ms.
+    const runGuard = (): void => {
+      guard();
+      if (Date.now() - guardStart < 600) {
+        window.requestAnimationFrame(runGuard);
+      }
+    };
+    const guardStart = Date.now();
+    window.requestAnimationFrame(runGuard);
+
     // Attach paste handler on the editor's DOM for image attachment support.
     host.addEventListener('paste', this.handlePaste);
   }
