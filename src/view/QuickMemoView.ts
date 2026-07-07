@@ -125,6 +125,16 @@ export class QuickMemoView extends ItemView {
 
     // Attach paste handler on the editor's DOM for image attachment support.
     host.addEventListener('paste', this.handlePaste);
+
+    // Click-forwarding: clicking blank space in the host div focuses CM6
+    host.addEventListener('click', (e: MouseEvent) => {
+      if ((e.target as HTMLElement).closest('.cm-content')) return;
+      const cmContent = host.querySelector<HTMLElement>('.cm-content');
+      if (cmContent) {
+        e.preventDefault();
+        cmContent.focus();
+      }
+    });
   }
 
   /** Wire up an inline NativeEditor for editing an existing record. */
