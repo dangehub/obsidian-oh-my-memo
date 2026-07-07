@@ -34,19 +34,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: release/*
+          generate_release_notes: true
           body: |
-            ## Quick Memo ${{ github.ref_name }}
+            ## OhMyMemo ${{ github.ref_name }}
 
-            ### 新增
-            - 附件粘贴支持：粘贴图片自动保存并插入 `![[...]]`
-            - 链接语法设置：Wiki / Markdown / 遵循 Obsidian
-            - 链接路径格式：简短 / 相对 / 绝对 / 遵循 Obsidian
-            - 附件存放路径：四种模式 + 遵循 Obsidian 设置
-            - 启动控制：可选是否自动在标签页打开
-
-            ### 改进
-            - 默认在主窗口（标签页）打开，不再进侧边栏
-            - 所有链接和附件设置均可选择「遵循 Obsidian 设置」
-
-            ### 文件
-            - `main.js`, `manifest.json`, `styles.css`
+            Markdown-native Obsidian plugin for daily quick records, flash thoughts, and todos.
