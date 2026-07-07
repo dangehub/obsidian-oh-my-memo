@@ -85,6 +85,7 @@ export class QuickMemoView extends ItemView {
     // Don't init if host already has an editor child (re-render protection)
     if (host.querySelector('.cm-editor')) return;
 
+    const savedScrollTop = this.contentEl.scrollTop;
     this.editor = new NativeEditor(
       host,
       this.app,
@@ -107,7 +108,7 @@ export class QuickMemoView extends ItemView {
         cmContent.blur();
       }
       if (container.scrollTop > 0) {
-        container.scrollTop = 0;
+        container.scrollTop = savedScrollTop;
       }
     };
     // Run guard on every animation frame for ~600ms.
