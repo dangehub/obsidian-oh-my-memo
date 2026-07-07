@@ -22,7 +22,7 @@ export class QuickMemoSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('用户名称')
-      .setDesc('显示在 Quick Memo 总览页侧边栏顶部。')
+      .setDesc('显示在 OhMyMemo 总览页顶部。')
       .addText((text) => text
         .setValue(this.plugin.settings.userName)
         .onChange(async (value) => {
@@ -226,8 +226,8 @@ export class QuickMemoSettingTab extends PluginSettingTab {
     containerEl.createEl('h2', { text: '启动行为' });
 
     new Setting(containerEl)
-      .setName('启动时打开 Quick Memo')
-      .setDesc('Obsidian 启动或插件重载后自动在标签页中显示 Quick Memo 总览。')
+      .setName('启动时打开 OhMyMemo')
+      .setDesc('Obsidian 启动或插件重载后自动在标签页中显示 OhMyMemo 总览。')
       .addToggle((toggle) => toggle
         .setValue(this.plugin.settings.openOnStartup)
         .onChange(async (value) => {
