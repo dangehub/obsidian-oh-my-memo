@@ -130,10 +130,11 @@ export class QuickMemoView extends ItemView {
         container.scrollTop = savedScrollTop;
       }
     };
-    // Run guard on every animation frame for ~600ms.
+    // On mobile, run the focus guard longer to prevent keyboard flicker
+    const guardDuration = Platform.isMobile ? 2000 : 600;
     const runGuard = (): void => {
       guard();
-      if (Date.now() - guardStart < 600) {
+      if (Date.now() - guardStart < guardDuration) {
         window.requestAnimationFrame(runGuard);
       }
     };
@@ -152,6 +153,13 @@ export class QuickMemoView extends ItemView {
         cmContent.focus();
       }
     });
+
+    // Prevent CM6 auto-focus from triggering the mobile keyboard
+    // Only focus when the user explicitly taps the editor
+    const cmContentEl = host.querySelector('.cm-content');
+    if (cmContentEl && document.activeElement === cmContentEl) {
+      (cmContentEl as HTMLElement).blur();
+    }
 
     // Restore saved draft from localStorage
     const savedDraft = localStorage.getItem(this.DRAFT_KEY);
@@ -634,11 +642,10 @@ export class QuickMemoView extends ItemView {
       this.editor = null;
     }
     this.initEditor();
-    // Use setTimeout to wait for the editor to be fully initialized before restoring content
+    // Editor content is restored synchronously — NativeEditor.create() is synchronous,
+    // so the editor is fully initialized by the time initEditor() returns.
     if (savedEditorContent) {
-      window.setTimeout(() => {
-        this.editor?.setValue(savedEditorContent);
-      }, 0);
+      (this.editor as NativeEditor | null)?.setValue(savedEditorContent);
     }
     this.initEditEditor();
   }
