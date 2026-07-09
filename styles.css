@@ -1,6 +1,10 @@
 /* Obsidian Quick Memo — overview styles.
    Uses Obsidian theme variables only so it follows light/dark themes. */
 
+/* Icon utility */
+.omm-icon { width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; flex-shrink: 0; }
+.omm-icon-sm { width: 14px; height: 14px; }
+
 .omm-root {
   --omm-heatmap-green-rgb: var(--color-green-rgb, 64, 160, 67);
   min-height: 100%;
@@ -168,68 +172,285 @@
   font-weight: 600;
 }
 
-/* ---------- Composer (stacked: type, textarea, save on separate rows) ---------- */
+/* ---------- Record tags + reactions ---------- */
+
+.omm-record-tags {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.omm-record-tag {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: color 160ms ease;
+}
+
+.omm-record-tag:hover {
+  color: var(--interactive-accent);
+}
+
+.omm-record-reactions {
+  display: none; /* hidden for now, available for future use */
+}
+
+/* ---------- Composer (pill toggle + header + editor + footer) ---------- */
 
 .omm-composer {
   display: flex;
   flex-direction: column;
-  gap: var(--size-2-3);
   margin-bottom: var(--size-4-4);
-  padding: var(--size-4-3);
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-m);
-  background: var(--background-secondary);
+  background: var(--background-primary);
+  overflow: hidden;
 }
 
-.omm-composer .omm-composer-row {
+.omm-composer-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--size-2-3);
+  padding: 10px 16px 0;
 }
 
-.omm-composer .omm-type {
-  width: auto;
-  min-width: 120px;
+/* Type pills */
+.omm-type-pills {
+  display: flex;
+  gap: 2px;
+  background: var(--background-modifier-hover, #f0f0f2);
+  border-radius: var(--radius-s);
+  padding: 2px;
+  width: fit-content;
 }
 
-.omm-composer-date {
-  color: var(--text-muted);
+.omm-type-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  padding: 3px 12px;
+  border-radius: 4px;
   font-size: var(--font-ui-smaller);
-  white-space: nowrap;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: inherit;
 }
 
-.omm-attach-btn {
+.omm-type-pill:hover {
+  color: var(--text-normal);
+}
+
+.omm-type-pill.active {
+  background: var(--background-primary);
+  color: var(--text-normal);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* Colored active states for composer type pills */
+.omm-type-pill.active[data-type="memo"] {
+  background: rgba(var(--color-yellow-rgb, 215, 160, 33), 0.12);
+  color: var(--color-yellow, #d7a021);
+}
+.omm-type-pill.active[data-type="todo"] {
+  background: rgba(var(--color-blue-rgb, 90, 130, 210), 0.12);
+  color: var(--color-blue, #5a82d2);
+}
+
+/* ── Datetime selector ── */
+
+.omm-datetime-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0px;
+}
+
+.omm-datetime-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: var(--radius-s);
+}
+
+.omm-datetime-btn:hover {
+  background: var(--background-modifier-hover);
+}
+
+.omm-datetime-btn .omm-datetime-text {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Reset button for custom datetime — revert to current time */
+.omm-datetime-reset {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-s);
-  background: var(--background-primary);
-  color: var(--text-muted);
-  font-size: 14px;
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
   cursor: pointer;
-  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1;
+  padding: 0;
+  margin-left: 2px;
+  transition: background 100ms ease, color 100ms ease;
 }
-
-.omm-attach-btn:hover {
+.omm-datetime-reset:hover {
   background: var(--background-modifier-hover);
   color: var(--text-normal);
+}
+
+.omm-datetime-popup {
+  position: fixed;
+  top: 35%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  box-shadow: 0 8px 24px var(--background-modifier-box-shadow);
+  padding: 16px;
+  z-index: 1000;
+  width: 300px;
+  max-width: 90vw;
+}
+
+/* Date + Time side by side */
+.omm-datetime-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.omm-datetime-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  font-size: var(--font-ui-small);
+  font-family: inherit;
+  color: var(--text-normal);
+  background: var(--background-primary);
+  outline: none;
+  transition: border-color 150ms ease;
+}
+
+.omm-datetime-row input:focus {
   border-color: var(--interactive-accent);
 }
 
-.omm-input {
-  min-height: 140px;
-  resize: vertical;
-  line-height: var(--line-height-normal);
-  background: var(--background-primary);
+/* Actions row */
+.omm-datetime-picker-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
+.omm-datetime-picker-actions button {
+  padding: 8px 20px;
+  border: none;
+  border-radius: var(--radius-s);
+  font-size: var(--font-ui-small);
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 100ms ease, opacity 100ms ease;
+}
+
+.omm-datetime-picker-actions .omm-datetime-ok {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.omm-datetime-picker-actions .omm-datetime-cancel {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.omm-datetime-picker-actions .omm-datetime-cancel:hover {
+  background: var(--background-modifier-hover);
+}
+
+/* Composer editor body */
+.omm-composer-body {
+  padding: 8px 16px;
+}
+
+/* Composer footer */
+.omm-composer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 16px 10px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.omm-composer-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.omm-composer-footer-left button {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-s);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.omm-composer-footer-left button:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+/* Draft auto-save status */
+.omm-draft-status {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 4px;
+}
+
+.omm-draft-status.saved {
+  color: var(--color-green, #22c55e);
+}
+
+.omm-draft-status .omm-draft-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  display: inline-block;
+}
+
+/* Save button */
 .omm-save {
-  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   min-height: 34px;
   padding: 0 18px;
   border-radius: var(--radius-s);
@@ -286,26 +507,79 @@
   gap: var(--size-4-2);
 }
 
+/* Date divider — horizontal rule with date text */
+.omm-date-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0 12px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.omm-date-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--background-modifier-border);
+}
+
+/* Record cards — Memos-inspired cleaner style */
 .omm-record {
   position: relative;
+  background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
   border-left: 3px solid var(--background-modifier-border);
   border-radius: var(--radius-m);
-  padding: var(--size-4-3);
-  padding-right: 36px;
-  background: var(--background-secondary);
-  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  transition: box-shadow 180ms ease, border-color 180ms ease;
 }
 
 .omm-record:hover {
-  border-color: var(--background-modifier-border-hover);
   box-shadow: 0 1px 3px var(--background-modifier-box-shadow);
+  border-color: var(--background-modifier-border-hover);
+}
+
+.omm-record-flash { border-left-color: var(--color-yellow, var(--interactive-accent)); }
+.omm-record-todo { border-left-color: var(--color-blue, var(--interactive-accent)); }
+.omm-record-record { border-left-color: var(--color-green, var(--interactive-accent)); }
+
+.omm-record-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.omm-record-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.omm-record-time {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.omm-record-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: var(--font-ui-smaller);
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
 }
 
 .omm-record-menu-trigger {
-  position: absolute;
-  top: 6px;
-  right: 6px;
+  flex: 0 0 auto;
   width: 26px;
   height: 26px;
   padding: 0;
@@ -313,9 +587,10 @@
   border-radius: var(--radius-s);
   background: transparent;
   color: var(--text-muted);
-  font-size: 16px;
-  line-height: 1;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   opacity: 0.6;
   transition: background-color 160ms ease, color 160ms ease, opacity 160ms ease;
 }
@@ -377,28 +652,6 @@
 .omm-record-menu-item-danger:hover,
 .omm-record-menu-item-danger:focus-visible {
   background: var(--background-modifier-error-hover, var(--background-modifier-hover));
-}
-
-.omm-record-flash { border-left-color: var(--color-yellow, var(--interactive-accent)); }
-.omm-record-todo { border-left-color: var(--color-blue, var(--interactive-accent)); }
-.omm-record-record { border-left-color: var(--color-green, var(--interactive-accent)); }
-
-.omm-record-meta {
-  display: flex;
-  align-items: center;
-  gap: var(--size-2-2);
-  font-size: var(--font-ui-smaller);
-  color: var(--text-muted);
-  margin-bottom: var(--size-2-2);
-}
-
-.omm-record-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: var(--background-modifier-hover);
-  color: var(--text-normal);
 }
 
 /* ---------- Record body: checkbox + rendered markdown ---------- */
@@ -934,6 +1187,10 @@
 @media (max-width: 900px) {
   .omm-layout {
     grid-template-columns: 1fr;
+    padding: 12px 8px;
+  }
+  .omm-main {
+    padding: 12px 8px;
   }
 
   .omm-root .omm-sidebar {
@@ -1668,4 +1925,18 @@ button.omm-filter-expand-trigger:hover {
 }
 .is-mobile .omm-editor-host .cm-editor .cm-tooltip-autocomplete {
   max-height: 300px;
+}
+
+/* ── Narrow-mobile: full-width content with tighter padding ── */
+
+@media (max-width: 768px) {
+  .omm-layout { grid-template-columns: 1fr; padding: 8px 4px; }
+  .omm-main { padding: 12px 8px; }
+  .omm-composer { border-radius: var(--radius-m); margin-left: -4px; margin-right: -4px; }
+  .omm-record { margin-left: -4px; margin-right: -4px; }
+  .omm-composer-header { padding: 8px 10px 0; }
+  .omm-composer-body { padding: 6px 10px; }
+  .omm-composer-footer { padding: 4px 10px 8px; }
+  .omm-editor-host .cm-editor .cm-content { min-height: 60px !important; }
+  .omm-mobile-topbar { padding: 4px 8px; }
 }

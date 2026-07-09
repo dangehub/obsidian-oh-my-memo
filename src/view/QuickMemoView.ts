@@ -40,6 +40,18 @@ export class QuickMemoView extends ItemView {
   private editor: NativeEditor | null = null;
   /** Native Obsidian Markdown editor for inline record editing. */
   private editEditor: NativeEditor | null = null;
+  /** Current composer type selection (memo or todo). */
+  private composerType: QuickMemoType = 'memo';
+  /** Formatted datetime string for the composer header. */
+  private composerDatetime = '';
+  /** Whether the datetime picker popup is visible. */
+  private datetimePickerOpen = false;
+  /** Draft auto-save status indicator. */
+  private draftStatus: 'idle' | 'saving' | 'saved' = 'idle';
+  /** Debounce timer handle for auto-save. */
+  private saveTimer: number | null = null;
+  /** localStorage key for draft persistence. */
+  private readonly DRAFT_KEY = 'omm_editor_draft';
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -62,6 +74,7 @@ export class QuickMemoView extends ItemView {
 
   async onOpen(): Promise<void> {
     this.currentDay = today();
+    this.composerDatetime = '';  // Empty = use current time on save
     // Prevent the Obsidian mobile toolbar from covering the bottom of the view.
     if (Platform.isMobile) {
       this.contentEl.style.paddingBottom = '80px';
@@ -80,8 +93,12 @@ export class QuickMemoView extends ItemView {
   }
 
   /** Wire up the native Obsidian Markdown editor in the composer host div. */
-  private initEditor(): void {
-    if (this.editor) return; // already initialized
+  private initEditor(force = false): void {
+    if (!force && this.editor) return; // already initialized
+    if (this.editor) {
+      this.editor.destroy();
+      this.editor = null;
+    }
     const host = this.contentEl.querySelector<HTMLDivElement>('.omm-editor-host');
     if (!host) return;
     // Don't init if host already has an editor child (re-render protection)
@@ -135,6 +152,27 @@ export class QuickMemoView extends ItemView {
         cmContent.focus();
       }
     });
+
+    // Restore saved draft from localStorage
+    const savedDraft = localStorage.getItem(this.DRAFT_KEY);
+    if (savedDraft) {
+      this.editor.setValue(savedDraft);
+      this.draftStatus = 'saved';
+    }
+
+    // Auto-save draft on content change
+    host.addEventListener('input', () => {
+      this.scheduleAutoSave();
+    });
+
+    // Save draft on blur so closing the app doesn't lose content
+    host.addEventListener('blur', () => {
+      const content = this.editor?.getValue() ?? '';
+      if (content.trim()) {
+        localStorage.setItem(this.DRAFT_KEY, content);
+        this.updateDraftStatusUI('saved');
+      }
+    }, true); // useCapture to catch blur on child elements
   }
 
   /** Wire up an inline NativeEditor for editing an existing record. */
@@ -209,16 +247,69 @@ export class QuickMemoView extends ItemView {
     const raw = this.editor.getValue();
     const content = raw.replace(/\r\n/gu, '\n').trim();
     if (!content) return;
-    const typeSelect = this.contentEl.querySelector<HTMLSelectElement>('.omm-type');
-    const type = (typeSelect?.value ?? 'memo') as QuickMemoType;
-    void this.saveDraft({ type, content });
+    void this.saveDraft({ type: this.composerType, content });
     this.editor.clear();
+    localStorage.removeItem(this.DRAFT_KEY);
+    this.updateDraftStatusUI('idle');
+  }
+
+  /** Debounced auto-save to localStorage on content change. */
+  private scheduleAutoSave(): void {
+    this.updateDraftStatusUI('saving');
+    if (this.saveTimer) {
+      window.clearTimeout(this.saveTimer);
+    } else {
+      // First keystroke: save immediately for responsiveness
+      const content = this.editor?.getValue() ?? '';
+      if (content.trim()) {
+        localStorage.setItem(this.DRAFT_KEY, content);
+      }
+    }
+    this.saveTimer = window.setTimeout(() => {
+      const content = this.editor?.getValue() ?? '';
+      if (content.trim()) {
+        try {
+          localStorage.setItem(this.DRAFT_KEY, content);
+          this.updateDraftStatusUI('saved');
+        } catch {
+          // localStorage might be full
+          this.updateDraftStatusUI('idle');
+        }
+      } else {
+        localStorage.removeItem(this.DRAFT_KEY);
+        this.updateDraftStatusUI('idle');
+      }
+    }, 300);
+  }
+
+  /** Lightweight DOM update for the draft status indicator. */
+  private updateDraftStatusUI(status: 'idle' | 'saving' | 'saved'): void {
+    this.draftStatus = status;
+    const statusEl = this.contentEl.querySelector<HTMLElement>('.omm-draft-status');
+    if (!statusEl) return;
+    const textSpan = statusEl.querySelector('span:last-child') as HTMLSpanElement | null;
+    if (textSpan) {
+      textSpan.textContent = status === 'saved'
+        ? '已自动保存' : status === 'saving'
+        ? '正在保存…' : '自动保存草稿';
+    }
+    statusEl.classList.toggle('saved', status === 'saved');
   }
 
   async onClose(): Promise<void> {
+    // Final save of draft before closing
+    const finalContent = this.editor?.getValue() ?? '';
+    if (finalContent.trim()) {
+      localStorage.setItem(this.DRAFT_KEY, finalContent);
+    }
+
     if (this.dayWatcher !== undefined) {
       window.clearInterval(this.dayWatcher);
       this.dayWatcher = undefined;
+    }
+    if (this.saveTimer !== null) {
+      window.clearTimeout(this.saveTimer);
+      this.saveTimer = null;
     }
     activeDocument.removeEventListener('pointerdown', this.handleOutsideInteraction, true);
     if (this.editEditor) {
@@ -324,6 +415,10 @@ export class QuickMemoView extends ItemView {
     // and caret — otherwise rebuilding the DOM on each search keystroke drops it.
     const restoreFocus = captureFocusRestore(this.contentEl);
 
+    // Preserve editor content across the full re-render so typed text isn't
+    // lost when rebuilds or pill-switches destroy+recreate the CM6 editor.
+    const savedEditorContent = this.editor?.getValue() ?? '';
+
     const allRecords = this.index.query({});
     let dateFilter: Partial<ViewFilters> = {};
     if (this.viewMode === 'date') {
@@ -350,6 +445,10 @@ export class QuickMemoView extends ItemView {
       warningCount: this.index.warnings().length,
       sortDirection: this.settings.sortDirection,
       sidebarCollapsed: this.sidebarCollapsed,
+      inputMode: this.composerType,
+      composerDatetime: this.composerDatetime,
+      datetimePickerOpen: this.datetimePickerOpen,
+      draftStatus: this.draftStatus,
       viewMode: this.viewMode,
       dateRangeStart: this.dateRange?.start,
       dateRangeEnd: this.dateRange?.end,
@@ -367,7 +466,11 @@ export class QuickMemoView extends ItemView {
     }, {
       onSave: (draft) => void this.saveDraft(draft),
       getComposerValue: () => this.editor?.getValue() ?? '',
-      clearComposer: () => { this.editor?.clear(); },
+      clearComposer: () => {
+        this.editor?.clear();
+        localStorage.removeItem(this.DRAFT_KEY);
+        this.updateDraftStatusUI('idle');
+      },
       onSelectDate: (date) => {
         this.selectedDate = date;
         this.viewMode = 'date';
@@ -495,6 +598,19 @@ export class QuickMemoView extends ItemView {
       onAttachFile: (file) => {
         void this.attachImage(file);
       },
+      onTypeChange: (type: QuickMemoType) => {
+        this.composerType = type;
+        this.render();
+      },
+      onToggleDatetimePicker: () => {
+        this.datetimePickerOpen = !this.datetimePickerOpen;
+        this.render();
+      },
+      onDatetimeChange: (dt: string) => {
+        this.composerDatetime = dt;
+        this.datetimePickerOpen = false;
+        this.render();
+      },
     });
 
     restoreFocus?.();
@@ -518,6 +634,12 @@ export class QuickMemoView extends ItemView {
       this.editor = null;
     }
     this.initEditor();
+    // Use setTimeout to wait for the editor to be fully initialized before restoring content
+    if (savedEditorContent) {
+      window.setTimeout(() => {
+        this.editor?.setValue(savedEditorContent);
+      }, 0);
+    }
     this.initEditEditor();
   }
 
@@ -675,9 +797,19 @@ export class QuickMemoView extends ItemView {
 
   private async saveDraft(draft: { type: QuickMemoType; content: string }): Promise<void> {
     const [content, ...bodyLines] = draft.content.replace(/\r\n/gu, '\n').split('\n');
+
+    // Use the composer's custom datetime if set, otherwise fall back
+    let date = this.selectedDate;
+    let time = currentTime();
+    if (this.composerDatetime && this.composerDatetime.includes(' ')) {
+      const parts = this.composerDatetime.split(' ');
+      date = parts[0];
+      time = parts[1];
+    }
+
     await this.repository.appendRecord({
-      date: this.selectedDate,
-      time: currentTime(),
+      date,
+      time,
       type: draft.type,
       content,
       body: bodyLines.join('\n') || undefined,
