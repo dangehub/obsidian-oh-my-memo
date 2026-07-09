@@ -865,13 +865,13 @@ export class QuickMemoView extends ItemView {
   }
 
   private async deleteRecord(record: QuickMemoRecord): Promise<void> {
-    if (!record.id) {
-      new Notice('该记录缺少块 ID，请先补全 ID 后再删除。');
-      return;
-    }
     const confirmed = await confirmDialog(this.app, '删除记录', '删除这条 OhMyMemo？此操作会修改 Daily Note 文件。');
     if (!confirmed) return;
-    await this.repository.deleteRecord(record.id);
+    if (record.id) {
+      await this.repository.deleteRecord(record.id);
+    } else {
+      await this.repository.deleteRecordByLocation(record.filePath, record.lineStart, record.lineEnd);
+    }
     await this.index.rebuild();
     this.render();
   }

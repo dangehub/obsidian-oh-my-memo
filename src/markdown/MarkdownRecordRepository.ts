@@ -63,6 +63,11 @@ export class MarkdownRecordRepository {
     await this.replaceLines(located.filePath, located.record.lineStart, located.record.lineEnd, '');
   }
 
+  /** Delete a record using its known file location, without requiring a block ID. */
+  async deleteRecordByLocation(filePath: string, lineStart: number, lineEnd: number): Promise<void> {
+    await this.replaceLines(filePath, lineStart, lineEnd, '');
+  }
+
   /** Remove `tag` (e.g. "#project") from every record that uses it, rewriting each
    *  affected Daily Note in place. Returns the number of records changed. A rebuild
    *  afterwards also drops any stale records left over from deleted files. */
