@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OhMyMemo · UI Prototype</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg-page: #f4f5f7;
+    --bg-card: #ffffff;
+    --bg-sidebar: #ffffff;
+    --bg-hover: #f0f0f2;
+    --bg-composer: #ffffff;
+    --text-primary: #37352f;
+    --text-secondary: #9ca3af;
+    --text-muted: #bbbdc3;
+    --text-on-accent: #ffffff;
+    --border-light: #e8e8ec;
+    --border-card: #f0f0f2;
+    --accent: #37352f;
+    --accent-hover: #2b2a26;
+    --tag-bg: #f0f0f2;
+    --tag-text: #6b7280;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.02);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.03);
+    --shadow-lg: 0 8px 30px rgba(0,0,0,0.08);
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans SC', sans-serif;
+    --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    --transition: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  body {
+    font-family: var(--font-ui);
+    background: #ecedef;
+    color: var(--text-primary);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page-header {
+    text-align: center;
+    padding: 24px 20px 16px;
+    background: #fff;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .page-header h1 { font-size: 20px; font-weight: 700; }
+  .page-header p { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+  .device-toggle {
+    display: flex; justify-content: center; gap: 8px; margin: 12px auto 0;
+    background: var(--bg-page); border-radius: var(--radius-md); padding: 4px; width: fit-content;
+  }
+  .device-toggle button {
+    padding: 6px 18px; border: none; border-radius: var(--radius-sm);
+    background: transparent; font-size: 13px; font-weight: 500; cursor: pointer;
+    color: var(--text-secondary); font-family: inherit; transition: all var(--transition);
+  }
+  .device-toggle button.active { background: #fff; color: var(--text-primary); box-shadow: var(--shadow-sm); }
+  .device-toggle button:hover:not(.active) { color: var(--text-primary); }
+
+  .showcase {
+    display: flex; justify-content: center; align-items: flex-start; gap: 40px;
+    padding: 32px 20px 60px;
+  }
+  .device-frame {
+    background: #fff; border-radius: 16px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.1), 0 1px 4px rgba(0,0,0,0.04);
+    overflow: hidden; transition: all 0.4s ease;
+  }
+  .device-frame.desktop { width: 860px; max-width: 100%; }
+  .device-frame.mobile { width: 375px; flex-shrink: 0; }
+  .device-frame.mobile-hidden { display: none; }
+  .device-frame.desktop-full { width: 100%; max-width: 1100px; }
+
+  .sidebar {
+    background: var(--bg-sidebar); border-right: 1px solid var(--border-light);
+    padding: 24px 20px; overflow-y: auto;
+  }
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 4px; }
+  .profile { margin-bottom: 20px; }
+  .profile-name { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+  .profile-slogan { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+
+  .section-label {
+    font-size: 11px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.06em; margin: 18px 0 8px;
+  }
+
+  .cal-header {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;
+  }
+  .cal-header .month-label { font-size: 13px; font-weight: 600; }
+  .cal-nav { display: flex; gap: 4px; }
+  .cal-nav button {
+    width: 24px; height: 24px; border: none; background: transparent;
+    border-radius: var(--radius-sm); cursor: pointer; color: var(--text-secondary);
+    font-size: 14px; display: flex; align-items: center; justify-content: center;
+  }
+  .cal-nav button:hover { background: var(--bg-hover); }
+  .cal-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+    font-size: 12px; text-align: center;
+  }
+  .cal-grid .dow {
+    color: var(--text-muted); font-weight: 500; font-size: 10px; padding: 4px 0;
+  }
+  .cal-grid button {
+    border: none; background: transparent; border-radius: 50%;
+    width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+    margin: 0 auto; cursor: pointer; color: var(--text-primary); font-size: 12px;
+    transition: all var(--transition);
+  }
+  .cal-grid button:hover { background: var(--bg-hover); }
+  .cal-grid button.today { font-weight: 700; }
+  .cal-grid button.active { background: var(--accent); color: var(--text-on-accent); font-weight: 600; }
+  .cal-grid button.has-activity::after {
+    content: ''; display: block; width: 4px; height: 4px; border-radius: 50%;
+    background: var(--accent); margin: 0 auto; opacity: 0.4;
+  }
+  .cal-grid button.active.has-activity::after { background: var(--text-on-accent); opacity: 0.8; }
+  .cal-grid button.om { color: var(--text-muted); }
+
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat-item { background: var(--bg-page); border-radius: var(--radius-sm); padding: 8px 10px; text-align: center; }
+  .stat-item .sv { font-size: 15px; font-weight: 700; line-height: 1.2; }
+  .stat-item .sl { font-size: 10px; color: var(--text-secondary); margin-top: 1px; }
+
+  .s-search {
+    width: 100%; padding: 8px 12px; border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm); background: var(--bg-page); color: var(--text-primary);
+    font-size: 13px; outline: none;
+  }
+  .s-search::placeholder { color: var(--text-muted); }
+  .s-search:focus { border-color: var(--accent); }
+
+  .tags { display: flex; flex-wrap: wrap; gap: 4px; }
+  .tag {
+    display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px;
+    background: var(--tag-bg); color: var(--tag-text); font-size: 12px; cursor: pointer;
+    border: none; font-family: inherit;
+  }
+  .tag:hover { background: #e5e7eb; color: var(--text-primary); }
+  .tag.active { background: var(--accent); color: var(--text-on-accent); }
+  .tag .cnt { margin-left: 4px; opacity: 0.6; font-size: 11px; }
+  .tag.active .cnt { opacity: 0.8; }
+
+  .app-layout {
+    display: grid; grid-template-columns: 260px 1fr; min-height: 600px;
+  }
+
+  .main-content {
+    padding: 28px 32px; background: var(--bg-page); min-height: 600px;
+  }
+  .main-content.mobile-view { padding: 16px; background: #fff; min-height: auto; }
+
+  /* Composer */
+  .composer {
+    background: var(--bg-composer); border: 1px solid var(--border-card);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+    margin-bottom: 24px; overflow: hidden;
+    transition: box-shadow var(--transition), border-color var(--transition);
+  }
+  .composer:focus-within { box-shadow: var(--shadow-md); border-color: #d0d0d4; }
+
+  .c-header {
+    display: flex; align-items: center; justify-content: space-between; padding: 12px 16px 0;
+  }
+  .c-type {
+    appearance: none; border: none; background: var(--bg-hover);
+    padding: 4px 24px 4px 10px; border-radius: var(--radius-sm); font-size: 13px;
+    font-weight: 500; color: var(--text-primary); cursor: pointer; font-family: inherit;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 6px center;
+  }
+  .dt-wrap { position: relative; }
+  .dt-btn {
+    display: flex; align-items: center; gap: 4px; cursor: pointer;
+    padding: 4px 10px; border-radius: var(--radius-sm);
+  }
+  .dt-btn:hover { background: var(--bg-hover); }
+  .dt-btn .ico { color: var(--text-muted); font-size: 12px; }
+  .dt-btn .txt { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  .dt-btn .edit { color: var(--text-muted); font-size: 10px; opacity: 0; }
+  .dt-btn:hover .edit { opacity: 1; }
+
+  .dt-popup {
+    display: none; position: absolute; top: 100%; right: 0; margin-top: 4px;
+    background: var(--bg-card); border: 1px solid var(--border-light);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-lg); padding: 12px;
+    z-index: 100; min-width: 220px;
+  }
+  .dt-popup.open { display: block; }
+  .dt-popup input {
+    width: 100%; padding: 6px 10px; border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm); font-size: 13px; font-family: var(--font-ui);
+    color: var(--text-primary); outline: none; margin-bottom: 6px;
+  }
+  .dt-popup input:focus { border-color: var(--accent); }
+  .dt-popup .pa { display: flex; gap: 6px; justify-content: flex-end; }
+  .dt-popup .pa button {
+    padding: 4px 12px; border: none; border-radius: var(--radius-sm);
+    font-size: 12px; cursor: pointer; font-family: inherit;
+  }
+  .dt-popup .pa .ok { background: var(--accent); color: var(--text-on-accent); }
+  .dt-popup .pa .ok:hover { background: var(--accent-hover); }
+  .dt-popup .pa .cancel { background: transparent; color: var(--text-secondary); }
+  .dt-popup .pa .cancel:hover { background: var(--bg-hover); }
+
+  .c-body { padding: 8px 16px; }
+  .c-ta {
+    width: 100%; min-height: 72px; border: none; outline: none; resize: none;
+    font-size: 14px; line-height: 1.7; color: var(--text-primary);
+    font-family: var(--font-ui); background: transparent;
+  }
+  .c-ta::placeholder { color: var(--text-muted); }
+
+  .c-foot {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 16px 10px; border-top: 1px solid var(--border-light);
+  }
+  .c-foot-left { display: flex; align-items: center; gap: 6px; }
+  .c-foot-left button {
+    width: 28px; height: 28px; border: none; background: transparent;
+    border-radius: var(--radius-sm); cursor: pointer; font-size: 15px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-secondary);
+  }
+  .c-foot-left button:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+  .ds {
+    font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; margin-left: 4px;
+  }
+  .ds.saved { color: #22c55e; }
+  .ds .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; display: inline-block; }
+
+  .btn-save {
+    padding: 6px 18px; border: none; border-radius: var(--radius-sm);
+    background: var(--accent); color: var(--text-on-accent); font-size: 13px;
+    font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+  .btn-save:hover { background: var(--accent-hover); }
+  .btn-save:active { transform: scale(0.97); }
+
+  .dd {
+    display: flex; align-items: center; gap: 12px;
+    margin: 24px 0 12px; font-size: 12px; color: var(--text-secondary); font-weight: 500;
+  }
+  .dd::after { content: ''; flex: 1; height: 1px; background: var(--border-light); }
+
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border-card);
+    border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 10px;
+    transition: box-shadow var(--transition), border-color var(--transition);
+  }
+  .card:hover { box-shadow: var(--shadow-sm); border-color: #d0d0d4; }
+  .card-h {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;
+  }
+  .card-meta { display: flex; align-items: center; gap: 6px; }
+  .badge {
+    font-size: 10px; font-weight: 600; padding: 1px 8px; border-radius: 999px;
+    background: var(--tag-bg); color: var(--tag-text); text-transform: uppercase;
+  }
+  .time { font-size: 12px; color: var(--text-muted); }
+  .card-acts {
+    display: flex; gap: 2px; opacity: 0;
+  }
+  .card:hover .card-acts { opacity: 1; }
+  .card-acts button {
+    width: 26px; height: 26px; border: none; background: transparent;
+    border-radius: var(--radius-sm); cursor: pointer; font-size: 13px;
+    display: flex; align-items: center; justify-content: center; color: var(--text-muted);
+  }
+  .card-acts button:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .card-b { font-size: 14px; line-height: 1.7; }
+  .card-b p { margin-bottom: 4px; }
+  .card-b p:last-child { margin-bottom: 0; }
+  .card-b code {
+    font-family: var(--font-mono); font-size: 0.9em; background: var(--bg-hover);
+    padding: 1px 5px; border-radius: 3px;
+  }
+  .card-b pre {
+    background: var(--bg-page); border-radius: var(--radius-sm);
+    padding: 10px 12px; margin: 6px 0; overflow-x: auto; font-size: 13px;
+  }
+  .card-b blockquote {
+    border-left: 3px solid var(--border-light); padding-left: 12px; margin: 6px 0; color: var(--text-secondary);
+  }
+  .card-b ul, .card-b ol { padding-left: 1.4em; margin-bottom: 4px; }
+  .card-f { display: flex; align-items: center; gap: 4px; margin-top: 8px; flex-wrap: wrap; }
+  .card-f .it { font-size: 12px; color: var(--tag-text); cursor: pointer; }
+  .card-f .it:hover { color: var(--accent); }
+
+  .reactions { display: flex; gap: 4px; margin-top: 8px; }
+  .reactions button {
+    display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px;
+    border: 1px solid var(--border-light); border-radius: 999px; background: transparent;
+    font-size: 12px; color: var(--text-secondary); cursor: pointer; font-family: inherit;
+  }
+  .reactions button:hover { background: var(--bg-hover); border-color: #d0d0d4; }
+
+  .chk {
+    appearance: none; width: 16px; height: 16px; border: 1.5px solid var(--text-muted);
+    border-radius: 3px; cursor: pointer; position: relative; flex-shrink: 0;
+    margin-right: 6px; vertical-align: middle;
+  }
+  .chk:checked { background: var(--accent); border-color: var(--accent); }
+  .chk:checked::after {
+    content: ''; position: absolute; left: 4px; top: 1px;
+    width: 4px; height: 8px; border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg);
+  }
+  .card.td .card-b { text-decoration: line-through; color: var(--text-muted); }
+
+  /* Mobile */
+  .msb {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 16px 4px; font-size: 11px; color: var(--text-secondary); font-weight: 600;
+  }
+  .msb .t { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+  .mt {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 16px 12px; border-bottom: 1px solid var(--border-light);
+  }
+  .mt .bb {
+    width: 32px; height: 32px; border: none; background: var(--bg-hover);
+    border-radius: 50%; font-size: 16px; cursor: pointer; color: var(--text-primary);
+  }
+  .mt .pt { font-size: 16px; font-weight: 700; }
+  .mt .mb {
+    width: 32px; height: 32px; border: none; background: transparent;
+    font-size: 20px; cursor: pointer; color: var(--text-primary);
+  }
+  .mbb {
+    display: flex; align-items: center; justify-content: space-around;
+    padding: 8px 16px; border-top: 1px solid var(--border-light);
+    background: #fff; position: sticky; bottom: 0;
+  }
+  .mbb button {
+    border: none; background: transparent; font-size: 14px; color: var(--text-secondary);
+    cursor: pointer; padding: 4px 12px; border-radius: var(--radius-sm); font-family: inherit;
+  }
+  .mbb button.active { color: var(--text-primary); font-weight: 600; }
+
+  .empty-state { text-align: center; padding: 48px 20px; color: var(--text-muted); }
+  .empty-state .ei { font-size: 40px; margin-bottom: 12px; opacity: 0.5; }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--text-primary); color: #fff; padding: 10px 20px;
+    border-radius: var(--radius-md); font-size: 13px; box-shadow: var(--shadow-lg);
+    display: none; align-items: center; gap: 12px; z-index: 999;
+  }
+  .toast.show { display: flex; }
+  .toast button {
+    padding: 4px 12px; border: 1px solid rgba(255,255,255,0.3); border-radius: var(--radius-sm);
+    background: transparent; color: #fff; font-size: 12px; cursor: pointer; font-family: inherit;
+  }
+  .toast button:hover { background: rgba(255,255,255,0.1); }
+  .toast .dismiss { background: rgba(255,255,255,0.15); }
+
+  .mobile-card-acts { opacity: 1 !important; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .card { animation: fIn 0.3s ease both; }
+    .card:nth-child(2) { animation-delay: 0.03s; }
+    .card:nth-child(3) { animation-delay: 0.06s; }
+    .card:nth-child(4) { animation-delay: 0.09s; }
+    @keyframes fIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  }
+
+  .hidden { display: none !important; }
+  .flex { display: flex; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>🎨 OhMyMemo UI 设计原型</h1>
+  <p>参考 Memos 风格 · Composer 日期时间可编辑 · 草稿自动保存 · 整体视觉优化</p>
+  <div class="device-toggle" id="deviceToggle">
+    <button class="active" data-view="both">桌面端 + 移动端</button>
+    <button data-view="desktop">仅桌面端</button>
+    <button data-view="mobile">仅移动端</button>
+  </div>
+</div>
+
+<div class="showcase" id="showcase">
+  <!-- Desktop frame: filled by JS -->
+  <div class="device-frame desktop" id="desktopFrame"></div>
+  <!-- Mobile frame: filled by JS -->
+  <div class="device-frame mobile" id="mobileFrame"></div>
+</div>
+
+<!-- Draft toast -->
+<div class="toast" id="draftToast">
+  <span id="toastText">检测到未保存的草稿 ✏️</span>
+  <button onclick="restoreDraft()">恢复</button>
+  <button class="dismiss" onclick="dismissDraft()">丢弃</button>
+</div>
+
+<script>
+const DRAFT_KEY = 'omm_draft';
+const NOW = new Date();
+const pad = n => String(n).padStart(2,'0');
+const DATE_STR = `${NOW.getFullYear()}-${pad(NOW.getMonth()+1)}-${pad(NOW.getDate())}`;
+const TIME_STR = `${pad(NOW.getHours())}:${pad(NOW.getMinutes())}`;
+const DT_STR = `${DATE_STR} ${TIME_STR}`;
+
+/* ── HTML builders ── */
+function sidebarHTML() { return `
+  <aside class="sidebar">
+    <div class="profile">
+      <div class="profile-name">阿典</div>
+      <div class="profile-slogan">嚯嚯嚯</div>
+    </div>
+    <div class="section-label">日历</div>
+    <div class="cal-header">
+      <span class="month-label">2026年7月</span>
+      <div class="cal-nav"><button title="上月">‹</button><button title="下月">›</button></div>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div class="section-label" style="margin-top:16px;">统计</div>
+    <div class="stats-grid">
+      <div class="stat-item"><div class="sv">3151</div><div class="sl">闪念</div></div>
+      <div class="stat-item"><div class="sv">66</div><div class="sl">待办</div></div>
+      <div class="stat-item"><div class="sv">1496</div><div class="sl">使用天数</div></div>
+      <div class="stat-item"><div class="sv">3217</div><div class="sl">总记录</div></div>
+    </div>
+    <div class="section-label">搜索</div>
+    <input class="s-search" type="search" placeholder="关键词搜索…" />
+    <div class="section-label">标签</div>
+    <div class="tags">
+      <button class="tag active">#软件推荐 <span class="cnt">252</span></button>
+      <button class="tag">#Obsidian插件 <span class="cnt">57</span></button>
+      <button class="tag">#梗 <span class="cnt">35</span></button>
+      <button class="tag">#字摘 <span class="cnt">35</span></button>
+      <button class="tag">#灵感 <span class="cnt">24</span></button>
+      <button class="tag">#吐槽 <span class="cnt">18</span></button>
+    </div>
+  </aside>`; }
+
+function composerHTML(desktop) { return `
+  <div class="composer" id="composer">
+    <div class="c-header">
+      <select class="c-type"><option value="memo">📝 闪念</option><option value="todo">✅ 待办</option></select>
+      <div class="dt-wrap">
+        <div class="dt-btn" onclick="togglePicker(event)">
+          <span class="ico">🕐</span>
+          <span class="txt" id="dtTxt">${DT_STR}</span>
+          <span class="edit">✎</span>
+        </div>
+        <div class="dt-popup" id="dtPopup">
+          <input type="date" id="pDate" value="${DATE_STR}" />
+          <input type="time" id="pTime" value="${TIME_STR}" />
+          <div class="pa">
+            <button class="cancel" onclick="closePicker()">取消</button>
+            <button class="ok" onclick="confirmPicker()">确定</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="c-body">
+      <textarea class="c-ta" id="editorTA" placeholder="${desktop ? '写点什么… 支持 Markdown（⌘+Enter 发送）' : '写点什么…'}"></textarea>
+    </div>
+    <div class="c-foot">
+      <div class="c-foot-left">
+        <button title="插入图片">🖼</button>
+        <button title="插入文件">📎</button>
+        <span class="ds" id="dsStatus"><span class="dot"></span> <span>自动保存草稿</span></span>
+      </div>
+      <button class="btn-save" onclick="saveMemo()">保存</button>
+    </div>
+  </div>`; }
+
+function cardHTML(borderColor, badge, time, body, tags, reactions, todoDone) {
+  return `
+    <div class="card${todoDone ? ' td' : ''}" style="border-left:3px solid ${borderColor};">
+      <div class="card-h">
+        <div class="card-meta"><span class="badge">${badge}</span><span class="time">${time}</span></div>
+        <div class="card-acts"><button title="编辑">✎</button><button title="更多">⋯</button></div>
+      </div>
+      <div class="card-b">${body}</div>
+      <div class="card-f">${tags.map(t => `<span class="it">${t}</span>`).join('')}</div>
+      ${reactions ? `<div class="reactions">${reactions.map(r => `<button>${r}</button>`).join('')}</div>` : ''}
+    </div>`; }
+
+function timelineDesktop() { return `
+  <div class="dd">${DATE_STR} 今天</div>
+  ${cardHTML('#4ade80', '闪念', TIME_STR, 'Memos 风格确实好看很多 🎉<br>卡片更干净了！', ['#UI优化', '#memos'], ['👍 2', '🎉 1'])}
+  ${cardHTML('#37352f', '待办', '15:20', '<input type="checkbox" class="chk" checked disabled />参考 Memos 优化 UI', [], null, true)}
+  ${cardHTML('#60a5fa', '闪念', '14:05', '<p>看到一个好用的工具推荐：</p><blockquote>「Memos — 开源、自托管的速记工具」</blockquote><p>理念和 OhMyMemo 很像！</p>', ['#软件推荐'], ['❤️ 3'])}
+  <div class="dd">${DATE_STR} 昨天</div>
+  ${cardHTML('#f59e0b', '闪念', '22:30', '<code>initEditEditor()</code> click 转发 ✅<br>编辑卡片空白区域也能聚焦了！', ['#Obsidian插件', '#开发'])}
+  ${cardHTML('#a78bfa', '闪念', '09:15', 'macOS 15.5 · Obsidian remote-debugging-port 9222 ✅<br>移动端 adb WebSocket ws://127.0.0.1:9223', ['#玩机'])}`; }
+
+function timelineMobile() { return `
+  ${cardHTML('#4ade80', '闪念', TIME_STR, 'Memos 风格确实好看很多 🎉', [])}
+  ${cardHTML('#37352f', '待办', '15:20', '<input type="checkbox" class="chk" checked disabled />参考 Memos 优化 UI', [], null, true)}
+  ${cardHTML('#f59e0b', '闪念', '22:30', '<code>initEditEditor()</code> click 转发 ✅', [])}
+  <div class="empty-state"><div class="ei">🌙</div><div class="empty-text">没有更多记录了</div></div>`; }
+
+function desktopHTML() { return `
+  <div class="app-layout">
+    ${sidebarHTML()}
+    <main class="main-content">${composerHTML(true)}${timelineDesktop()}</main>
+  </div>`; }
+
+function mobileHTML() { return `
+  <div class="msb"><span class="t" id="mTime">${TIME_STR}</span><div style="font-size:11px;">📶 94% 🔋</div></div>
+  <div class="mt"><button class="bb">☰</button><span class="pt">今天</span><button class="mb">⋯</button></div>
+  <div class="main-content mobile-view" style="padding-bottom:80px;">${composerHTML(false)}${timelineMobile()}</div>
+  <div class="mbb"><button class="active">🏠 首页</button><button>📅 日历</button><button>🏷️ 标签</button><button>⚙️ 设置</button></div>`; }
+
+/* ── Render ── */
+document.getElementById('desktopFrame').innerHTML = desktopHTML();
+document.getElementById('mobileFrame').innerHTML = mobileHTML();
+
+/* ── Calendar ── */
+function renderCal() {
+  const grid = document.getElementById('calGrid');
+  if (!grid) return;
+  const year = 2026, month = 7;
+  const fd = new Date(year, month-1, 1);
+  const ld = new Date(year, month, 0);
+  const sd = fd.getDay();
+  const dim = ld.getDate();
+  const as = sd === 0 ? 6 : sd - 1;
+  const hd = ['一','二','三','四','五','六','日'];
+  const todayStr = NOW.toISOString().slice(0,10);
+  const sel = DATE_STR;
+  const act = [1,3,6,9,11,14,15,18,22,25,28];
+  let h = hd.map(x => `<div class="dow">${x}</div>`).join('');
+  const pd = new Date(year, month-2, 0).getDate();
+  for (let i = 0; i < as; i++) h += `<button class="om">${pd - as + i + 1}</button>`;
+  for (let d = 1; d <= dim; d++) {
+    const ds = `${year}-${pad(month)}-${pad(d)}`;
+    const cls = [ds === todayStr ? 'today' : '', ds === sel ? 'active' : '', act.includes(d) ? 'has-activity' : ''].filter(Boolean).join(' ');
+    h += `<button class="${cls}">${d}</button>`;
+  }
+  const total = as + dim;
+  const rem = total % 7;
+  if (rem > 0) for (let i = 1; i <= 7 - rem; i++) h += `<button class="om">${i}</button>`;
+  grid.innerHTML = h;
+}
+renderCal();
+
+/* ── Picker ── */
+let pickerOpen = false;
+window.togglePicker = function(e) {
+  e.stopPropagation();
+  const popup = document.getElementById('dtPopup');
+  if (!popup) return;
+  pickerOpen = !pickerOpen;
+  popup.classList.toggle('open', pickerOpen);
+};
+document.addEventListener('click', () => {
+  if (pickerOpen) {
+    const popup = document.getElementById('dtPopup');
+    if (popup) popup.classList.remove('open');
+    pickerOpen = false;
+  }
+});
+window.closePicker = function() {
+  document.getElementById('dtPopup')?.classList.remove('open');
+  pickerOpen = false;
+};
+window.confirmPicker = function() {
+  const date = document.getElementById('pDate')?.value;
+  const time = document.getElementById('pTime')?.value;
+  if (date && time) {
+    const el = document.getElementById('dtTxt');
+    if (el) el.textContent = `${date} ${time}`;
+  }
+  closePicker();
+};
+
+/* ── Draft ── */
+let saveTimer = null;
+document.addEventListener('input', function(e) {
+  if (e.target && e.target.id === 'editorTA') {
+    const ds = document.getElementById('dsStatus');
+    const txt = ds?.querySelector('span:last-child');
+    if (ds) ds.className = 'ds';
+    if (txt) txt.textContent = '正在保存…';
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      const val = document.getElementById('editorTA')?.value.trim();
+      if (val) {
+        localStorage.setItem(DRAFT_KEY, val);
+        if (ds) ds.className = 'ds saved';
+        if (txt) txt.textContent = '已自动保存';
+      } else {
+        localStorage.removeItem(DRAFT_KEY);
+        if (ds) ds.className = 'ds';
+        if (txt) txt.textContent = '自动保存草稿';
+      }
+    }, 1000);
+  }
+});
+
+function checkDraft() {
+  const saved = localStorage.getItem(DRAFT_KEY);
+  if (saved && saved.trim()) {
+    const toast = document.getElementById('draftToast');
+    if (toast) toast.classList.add('show');
+  }
+}
+
+window.restoreDraft = function() {
+  const saved = localStorage.getItem(DRAFT_KEY);
+  const ta = document.getElementById('editorTA');
+  if (saved && ta) {
+    ta.value = saved;
+    const ds = document.getElementById('dsStatus');
+    const txt = ds?.querySelector('span:last-child');
+    if (ds) ds.className = 'ds saved';
+    if (txt) txt.textContent = '已恢复草稿';
+  }
+  document.getElementById('draftToast')?.classList.remove('show');
+};
+
+window.dismissDraft = function() {
+  localStorage.removeItem(DRAFT_KEY);
+  document.getElementById('draftToast')?.classList.remove('show');
+};
+
+window.saveMemo = function() {
+  const ta = document.getElementById('editorTA');
+  if (!ta || !ta.value.trim()) return;
+  const ds = document.getElementById('dsStatus');
+  const txt = ds?.querySelector('span:last-child');
+  if (ds) ds.className = 'ds saved';
+  if (txt) txt.textContent = '已保存 ✓';
+  ta.value = '';
+  localStorage.removeItem(DRAFT_KEY);
+  setTimeout(() => {
+    if (txt) txt.textContent = '自动保存草稿';
+    if (ds) ds.className = 'ds';
+  }, 2000);
+};
+
+document.addEventListener('keydown', function(e) {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+    const ta = document.getElementById('editorTA');
+    if (ta && document.activeElement === ta) { e.preventDefault(); saveMemo(); }
+  }
+});
+
+/* ── Device toggle ── */
+document.querySelectorAll('#deviceToggle button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#deviceToggle button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const v = btn.dataset.view;
+    const desk = document.getElementById('desktopFrame');
+    const mob = document.getElementById('mobileFrame');
+    if (v === 'desktop') { desk.className = 'device-frame desktop-full'; mob.classList.add('mobile-hidden'); }
+    else if (v === 'mobile') { desk.classList.add('hidden'); mob.classList.remove('mobile-hidden'); }
+    else { desk.className = 'device-frame desktop'; mob.classList.remove('mobile-hidden'); }
+  });
+});
+
+/* ── Tag toggle ── */
+document.addEventListener('click', function(e) {
+  if (e.target && e.target.classList.contains('tag')) {
+    e.target.classList.toggle('active');
+  }
+});
+
+/* ── Init ── */
+checkDraft();
+</script>
+</body>
+</html>
