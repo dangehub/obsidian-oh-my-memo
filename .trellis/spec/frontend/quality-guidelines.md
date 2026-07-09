@@ -35,3 +35,4 @@ npm run build         # typecheck + esbuild production → main.js
 - `main.js` is gitignored — build artifact only.
 - `.claude/skills/`, `__pycache__/`, and `*.pyc` are gitignored.
 - Version tag format: `X.Y.Z` (semver).
+- **Commit after user confirms fix works.** Don't wait to be reminded. Once the user confirms a change is effective, commit immediately with a proper Conventional Commits message. The user should never have to prompt "你还没commit".

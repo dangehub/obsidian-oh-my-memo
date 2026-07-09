@@ -1,2 +1,0 @@
-{"path": ".trellis/spec/frontend/quality-guidelines.md", "purpose": "Quality gates — typecheck, test, build"}
-{"path": ".trellis/spec/frontend/component-guidelines.md", "purpose": "Verify renderer follows pure DOM + view state patterns"}

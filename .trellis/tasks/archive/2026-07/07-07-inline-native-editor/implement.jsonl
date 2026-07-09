@@ -1,6 +1,0 @@
-# Format: one JSON object per line, each referencing a file that the sub-agent should load
-{"path": ".trellis/spec/frontend/component-guidelines.md", "purpose": "Component patterns, renderer conventions, view state ownership"}
-{"path": ".trellis/spec/frontend/quality-guidelines.md", "purpose": "Typecheck before commit, test requirements, CSS rules"}
-{"path": ".trellis/spec/frontend/type-safety.md", "purpose": "TypeScript patterns, VaultLike interface conventions"}
-{"path": ".trellis/spec/frontend/hook-guidelines.md", "purpose": "Plugin lifecycle, ItemView init/cleanup patterns"}
-{"path": ".trellis/spec/guides/cross-layer-thinking-guide.md", "purpose": "Data flow between renderer and view layer"}

@@ -360,7 +360,7 @@ describe('renderOverview', () => {
     expect(todayBtn!.classList.contains('omm-heatmap-today--current')).toBe(true);
   });
 
-  it('shows the selected date next to the composer type selector', () => {
+  it('shows the composer datetime in the header', () => {
     const root = document.createElement('div');
     renderOverview(root, {
       settings: DEFAULT_SETTINGS,
@@ -378,9 +378,10 @@ describe('renderOverview', () => {
       recordsTotal: 0,
       viewMode: 'all',
       dateRangeExpanded: false,
+      composerDatetime: '2026-06-21 15:30',
     }, makeCallbacks());
 
-    expect(root.querySelector('.omm-composer-date')?.textContent).toBe('2026-06-21');
+    expect(root.querySelector('.omm-datetime-text')?.textContent).toBe('2026-06-21 15:30');
   });
 
   it('groups records by date when a tag or text filter spans multiple dates', () => {

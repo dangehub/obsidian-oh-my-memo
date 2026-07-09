@@ -40,6 +40,12 @@ export interface OverviewState {
   warningCount: number;
   sortDirection: 'asc' | 'desc';
   sidebarCollapsed: boolean;
+  /** Datetime text displayed in the composer header (e.g. "2026-07-09 14:30"). */
+  composerDatetime?: string;
+  /** Whether the datetime picker popup is shown. */
+  datetimePickerOpen?: boolean;
+  /** Draft auto-save status indicator. */
+  draftStatus?: 'idle' | 'saving' | 'saved';
   /** Number of total filtered records (before lazy load slice). */
   recordsTotal: number;
   /** View mode: 'all', 'date' (single day), or 'range' (date range). */
@@ -90,6 +96,12 @@ export interface OverviewCallbacks {
   onHeatmapPrevMonth(): void;
   onHeatmapNextMonth(): void;
   onAttachFile(file: File, editor: HTMLElement): void;
+  /** Switch the composer type between memo and todo. */
+  onTypeChange?(type: QuickMemoType): void;
+  /** Open/close the datetime picker popup. */
+  onToggleDatetimePicker?(): void;
+  /** Apply a new datetime from the picker. */
+  onDatetimeChange?(datetime: string): void;
 }
 
 /** Type filter option values, including composite todo-status filters. */
@@ -102,6 +114,25 @@ const TYPE_FILTER_OPTIONS: ReadonlyArray<readonly [TypeFilterValue, string]> = [
   ['todo-done', '已完成待办'],
   ['todo-open', '未完成待办'],
 ];
+
+/* ── SVG Icons (Lucide-style inline paths) ── */
+
+const SVG_ICONS: Record<string, string> = {
+  pen: '<path d="M17 3a2.85 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/>',
+  'check-square': '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><polyline points="9 12 12 15 15 9"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+  image: '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',
+  edit: '<path d="M17 3a2.85 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
+  'more-h': '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+  search: '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+  tag: '<circle cx="7.5" cy="7.5" r="1.5"/><path d="m20.59 13.41-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82Z"/>',
+  save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
+};
+
+function svgIconHtml(name: string, cls = 'omm-icon'): string {
+  const paths = SVG_ICONS[name] ?? '';
+  return `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+}
 
 export function renderOverview(root: HTMLElement, state: OverviewState, callbacks: OverviewCallbacks): void {
   root.innerHTML = '';
@@ -153,7 +184,8 @@ function renderSidebar(container: HTMLElement, state: OverviewState, callbacks: 
   // Stats
   renderStats(container, state.stats);
 
-  appendDiv(container, 'omm-section-label', '筛选');
+  const filterLabel = appendDiv(container, 'omm-section-label');
+  filterLabel.innerHTML = `${svgIconHtml('search', 'omm-icon-sm')} 筛选`;
 
   const typeSelect = appendEl(container, 'select', 'omm-type-filter');
   for (const [value, label] of TYPE_FILTER_OPTIONS) {
@@ -192,7 +224,8 @@ function renderSidebar(container: HTMLElement, state: OverviewState, callbacks: 
   });
 
   if (state.tags.length > 0) {
-    appendDiv(container, 'omm-section-label', '标签');
+    const tagLabel = appendDiv(container, 'omm-section-label');
+    tagLabel.innerHTML = `${svgIconHtml('tag', 'omm-icon-sm')} 标签`;
     const tags = appendDiv(container, 'omm-tags');
     for (const [tag, count] of state.tags) {
       const selected = state.filters.tag === tag;
@@ -249,20 +282,91 @@ function renderMain(container: HTMLElement, state: OverviewState, callbacks: Ove
 
   const composer = appendDiv(container, 'omm-composer');
 
-  // First row: type selector on the left, the date the record will save to on the
-  // right, so the user always knows which day they're capturing into.
-  const row = appendDiv(composer, 'omm-composer-row');
-  const type = appendEl(row, 'select', 'omm-type');
-  for (const [value, label] of TYPE_OPTIONS) {
-    appendOption(type, label, value);
-  }
-  type.value = state.inputMode ?? 'memo';
-  const dateEl = appendDiv(row, 'omm-composer-date', state.selectedDate);
-  // On mobile, tapping the date opens the sidebar drawer so the user can
-  // use the heatmap to jump to a different date.
-  dateEl.addEventListener('click', () => callbacks.onToggleSidebar());
+  // ── Composer header: pill toggle + datetime ──
+  const header = appendDiv(composer, 'omm-composer-header');
 
-  // Hidden file input + attach button for inserting images on mobile.
+  // Type pills replacing the old dropdown
+  const pills = appendDiv(header, 'omm-type-pills');
+  const memoPill = appendEl(pills, 'button', `omm-type-pill${state.inputMode === 'todo' ? '' : ' active'}`);
+  memoPill.type = 'button';
+  memoPill.setAttribute('data-type', 'memo');
+  memoPill.innerHTML = `${svgIconHtml('pen')} 闪念`;
+  memoPill.onclick = () => callbacks.onTypeChange?.('memo');
+
+  const todoPill = appendEl(pills, 'button', `omm-type-pill${state.inputMode === 'todo' ? ' active' : ''}`);
+  todoPill.type = 'button';
+  todoPill.setAttribute('data-type', 'todo');
+  todoPill.innerHTML = `${svgIconHtml('check-square')} 待办`;
+  todoPill.onclick = () => callbacks.onTypeChange?.('todo');
+
+  // Datetime display (right side of header)
+  const dtWrap = appendDiv(header, 'omm-datetime-wrap');
+  dtWrap.style.whiteSpace = 'nowrap';
+
+  const hasCustomTime = state.composerDatetime && state.composerDatetime.trim() !== '';
+  const dtBtn = appendDiv(dtWrap, 'omm-datetime-btn');
+  if (hasCustomTime) {
+    dtBtn.innerHTML = `${svgIconHtml('clock')}<span class="omm-datetime-text">${state.composerDatetime}</span>`;
+  } else {
+    dtBtn.innerHTML = `${svgIconHtml('clock')}`;
+    dtBtn.title = '设置自定义日期时间';
+  }
+  dtBtn.onclick = () => callbacks.onToggleDatetimePicker?.();
+
+  // Datetime picker popup (shown when toggled)
+  if (state.datetimePickerOpen) {
+    const popup = appendDiv(dtWrap, 'omm-datetime-popup');
+
+    // Row container for date + time side by side
+    const row = appendDiv(popup, 'omm-datetime-row');
+
+    const dateInput = appendEl(row, 'input', 'omm-datetime-date');
+    dateInput.type = 'date';
+    const timeInput = appendEl(row, 'input', 'omm-datetime-time');
+    timeInput.type = 'time';
+
+    if (state.composerDatetime && state.composerDatetime.includes(' ')) {
+      const [d, t] = state.composerDatetime.split(' ');
+      dateInput.value = d;
+      timeInput.value = t;
+    } else {
+      const n = new Date();
+      const p2 = (v: number) => String(v).padStart(2, '0');
+      dateInput.value = `${n.getFullYear()}-${p2(n.getMonth() + 1)}-${p2(n.getDate())}`;
+      timeInput.value = `${p2(n.getHours())}:${p2(n.getMinutes())}`;
+    }
+
+    const pa = appendDiv(popup, 'omm-datetime-picker-actions');
+    const okBtn = appendEl(pa, 'button', 'omm-datetime-ok', '确定');
+    okBtn.type = 'button';
+    okBtn.onclick = () => {
+      const d = dateInput.value;
+      const t = timeInput.value;
+      if (d && t) callbacks.onDatetimeChange?.(`${d} ${t}`);
+    };
+    const cancelBtn = appendEl(pa, 'button', 'omm-datetime-cancel', '取消');
+    cancelBtn.type = 'button';
+    cancelBtn.onclick = () => callbacks.onToggleDatetimePicker?.();
+  }
+
+  // If custom time, add reset button
+  if (hasCustomTime) {
+    const resetBtn = appendEl(dtWrap, 'button', 'omm-datetime-reset');
+    resetBtn.type = 'button';
+    resetBtn.textContent = '✕';
+    resetBtn.title = '重置为当前时间';
+    resetBtn.onclick = (e: MouseEvent) => {
+      e.stopPropagation();
+      callbacks.onDatetimeChange?.('');
+    };
+  }
+
+  // ── Editor body ──
+  const body = appendDiv(composer, 'omm-composer-body');
+  const input = appendEl(body, 'div', 'omm-editor-host');
+  input.style.minHeight = '80px';
+
+  // Hidden file input for image attachment
   const attachInput = appendEl(composer, 'input', 'omm-attach-input');
   attachInput.type = 'file';
   attachInput.accept = 'image/*';
@@ -272,24 +376,36 @@ function renderMain(container: HTMLElement, state: OverviewState, callbacks: Ove
     if (file) callbacks.onAttachFile(file, input);
     attachInput.value = '';
   };
-  const attachBtn = appendEl(row, 'button', 'omm-attach-btn', '📎');
+
+  // ── Composer footer: image button + draft status + save ──
+  const footer = appendDiv(composer, 'omm-composer-footer');
+  const footerLeft = appendDiv(footer, 'omm-composer-footer-left');
+
+  // Image attach button
+  const attachBtn = appendEl(footerLeft, 'button', 'omm-attach-btn');
   attachBtn.type = 'button';
   attachBtn.title = '插入图片';
+  attachBtn.innerHTML = svgIconHtml('image');
   attachBtn.onclick = () => attachInput.click();
 
-  // Native Obsidian Markdown editor — created by `NativeEditor` in the
-  // view's `initEditor` after the DOM is rendered. It inherits all Obsidian
-  // editor extensions (easy-typing, EditorSuggest, Live Preview, mobile
-  // toolbar, …) because it IS an Obsidian MarkdownEditor instance.
-  const input = appendEl(composer, 'div', 'omm-editor-host');
-  input.style.minHeight = '80px';
+  // Draft auto-save status
+  const draftStatus = appendDiv(footerLeft, 'omm-draft-status');
+  appendEl(draftStatus, 'span', 'omm-draft-dot');
+  const statusText = appendEl(draftStatus, 'span', '');
+  statusText.textContent = state.draftStatus === 'saved'
+    ? '已自动保存' : state.draftStatus === 'saving'
+    ? '正在保存…' : '自动保存草稿';
+  if (state.draftStatus === 'saved') draftStatus.classList.add('saved');
 
-  const save = appendEl(composer, 'button', 'omm-save', '保存');
+  // Save button (right-aligned)
+  const save = appendEl(footer, 'button', 'omm-save');
+  save.type = 'button';
+  save.innerHTML = `${svgIconHtml('save', 'omm-icon-sm')} 保存`;
   const submit = (): void => {
     const raw = callbacks.getComposerValue ? callbacks.getComposerValue() : '';
     const content = raw.replace(/\r\n/gu, '\n').trim();
     if (!content) return;
-    callbacks.onSave({ type: type.value as QuickMemoType, content });
+    callbacks.onSave({ type: state.inputMode ?? 'memo', content });
     if (callbacks.clearComposer) callbacks.clearComposer();
   };
   save.onclick = submit;
@@ -503,20 +619,21 @@ function renderCrossDateTimeline(container: HTMLElement, state: OverviewState, c
 function renderRecord(list: HTMLElement, record: QuickMemoRecord, editing: boolean, menuOpen: boolean, callbacks: OverviewCallbacks, markdown: MarkdownApi): void {
   const card = appendDiv(list, `omm-record omm-record-${record.type}${record.completed ? ' is-done' : ''}`);
 
-  // Top-right "more" trigger; actions live in a dropdown rather than a bottom row.
-  const trigger = appendEl(card, 'button', 'omm-record-menu-trigger');
+  // Head: meta row + menu trigger
+  const head = appendDiv(card, 'omm-record-head');
+
+  const meta = appendDiv(head, 'omm-record-meta');
+  appendEl(meta, 'span', 'omm-record-time', record.time);
+  const badge = appendEl(meta, 'span', 'omm-record-badge') as HTMLElement;
+  badge.innerHTML = `${svgIconHtml(record.type === 'memo' ? 'pen' : 'check-square', 'omm-icon-sm')} ${typeLabel(record.type)}`;
+
+  const trigger = appendEl(head, 'button', 'omm-record-menu-trigger');
   trigger.type = 'button';
-  trigger.textContent = '⋮';
+  trigger.innerHTML = svgIconHtml('more-h');
   trigger.setAttribute('aria-label', '更多操作');
   trigger.setAttribute('aria-haspopup', 'true');
   trigger.setAttribute('aria-expanded', String(menuOpen));
   trigger.onclick = () => callbacks.onToggleMenu(recordKey(record));
-
-  const meta = appendDiv(card, 'omm-record-meta');
-  appendEl(meta, 'span', '', record.time);
-  const badge = appendEl(meta, 'span', 'omm-record-badge') as HTMLElement;
-  badge.textContent = typeLabel(record.type);
-  if (record.type === 'todo') badge.textContent += record.completed ? ' · 已完成' : ' · 未完成';
 
   if (editing) {
     const editType = appendEl(card, 'select', 'omm-edit-type');
@@ -565,6 +682,20 @@ function renderRecord(list: HTMLElement, record: QuickMemoRecord, editing: boole
       showImageLightbox(img.src, img.alt || '');
     });
   }
+
+  // Card tags footer
+  if (record.tags.length > 0) {
+    const tagsEl = appendDiv(card, 'omm-record-tags');
+    tagsEl.innerHTML = svgIconHtml('tag', 'omm-icon-sm');
+    for (const tag of record.tags) {
+      const tagBtn = appendEl(tagsEl, 'span', 'omm-record-tag', `#${tag}`);
+      tagBtn.onclick = (): void => callbacks.onFilterChange({ tag });
+    }
+  }
+
+  // Reactions area (hidden, for future use)
+  const reactionsDiv = appendDiv(card, 'omm-record-reactions');
+  reactionsDiv.style.display = 'none';
 
   if (menuOpen) {
     const menu = appendDiv(card, 'omm-record-menu');
