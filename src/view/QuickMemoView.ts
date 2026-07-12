@@ -883,6 +883,13 @@ export class QuickMemoView extends ItemView {
       completed: draft.type === 'todo' ? false : undefined,
     }, randomIdSuffix());
     await this.index.rebuild();
+
+    // Clear draft state before re-render so the editor is empty and the
+    // status reads "auto-save draft" (idle) instead of showing stale content.
+    localStorage.removeItem(this.DRAFT_KEY);
+    this.editor?.clear();
+    this.updateDraftStatusUI('idle');
+
     this.render();
   }
 
