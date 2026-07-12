@@ -51,7 +51,7 @@
 
 .omm-layout {
   display: grid;
-  grid-template-columns: minmax(232px, 280px) minmax(380px, 1fr);
+  grid-template-columns: minmax(232px, 360px) minmax(380px, 1fr);
   align-items: start;
   gap: var(--size-4-4);
   padding: var(--size-4-4);
@@ -725,7 +725,6 @@
 .omm-record-content {
   line-height: var(--line-height-normal);
   color: var(--text-normal);
-  max-width: 75ch;
   overflow-wrap: anywhere;
   word-break: break-word;
   /* Card body is rendered markdown — make sure the user can select & copy it. */
