@@ -33,6 +33,8 @@ export interface OverviewState {
   todayDate: string;
   editingRecordId?: string;
   openMenuRecordId?: string;
+  /** Record ID whose delete button is in confirmation state (second click deletes). */
+  confirmingDeleteId?: string;
   inputMode?: 'memo' | 'todo';
   filters: ViewFilters;
   stats: OverviewStats;
@@ -102,6 +104,8 @@ export interface OverviewCallbacks {
   onToggleDatetimePicker?(): void;
   /** Apply a new datetime from the picker. */
   onDatetimeChange?(datetime: string): void;
+  /** Confirm deletion after the user clicked "删除" a second time. */
+  onConfirmDelete?(record: QuickMemoRecord): void;
 }
 
 /** Type filter option values, including composite todo-status filters. */
@@ -536,7 +540,7 @@ function renderMain(container: HTMLElement, state: OverviewState, callbacks: Ove
 
   for (const record of state.records) {
     const key = recordKey(record);
-    renderRecord(list, record, state.editingRecordId === key, state.openMenuRecordId === key, callbacks, markdown);
+    renderRecord(list, record, state.editingRecordId === key, state.openMenuRecordId === key, state.confirmingDeleteId === key, callbacks, markdown);
   }
 
   // Lazy load: show "load more" button when there are more records
@@ -572,7 +576,7 @@ function renderRangeTimeline(container: HTMLElement, state: OverviewState, callb
     const cards = appendDiv(group, 'omm-date-group-cards');
     for (const record of groupRecords) {
       const key = recordKey(record);
-      renderRecord(cards, record, state.editingRecordId === key, state.openMenuRecordId === key, callbacks, markdown);
+      renderRecord(cards, record, state.editingRecordId === key, state.openMenuRecordId === key, state.confirmingDeleteId === key, callbacks, markdown);
     }
   }
 
@@ -611,12 +615,12 @@ function renderCrossDateTimeline(container: HTMLElement, state: OverviewState, c
     const cards = appendDiv(group, 'omm-date-group-cards');
     for (const record of groupRecords) {
       const key = recordKey(record);
-      renderRecord(cards, record, state.editingRecordId === key, state.openMenuRecordId === key, callbacks, markdown);
+      renderRecord(cards, record, state.editingRecordId === key, state.openMenuRecordId === key, state.confirmingDeleteId === key, callbacks, markdown);
     }
   }
 }
 
-function renderRecord(list: HTMLElement, record: QuickMemoRecord, editing: boolean, menuOpen: boolean, callbacks: OverviewCallbacks, markdown: MarkdownApi): void {
+function renderRecord(list: HTMLElement, record: QuickMemoRecord, editing: boolean, menuOpen: boolean, confirmingDelete: boolean, callbacks: OverviewCallbacks, markdown: MarkdownApi): void {
   const card = appendDiv(list, `omm-record omm-record-${record.type}${record.completed ? ' is-done' : ''}`);
 
   // Head: meta row + menu trigger
@@ -706,7 +710,11 @@ function renderRecord(list: HTMLElement, record: QuickMemoRecord, editing: boole
     addMenuItem(menu, '复制块链接', () => callbacks.onCopyBlock(record));
     addMenuItem(menu, '打开源文件', () => callbacks.onOpenSource(record));
     appendDiv(menu, 'omm-record-menu-divider');
-    addMenuItem(menu, '删除', () => callbacks.onDelete(record), 'omm-record-menu-item-danger');
+    if (confirmingDelete) {
+      addMenuItem(menu, '确认删除？', () => callbacks.onConfirmDelete?.(record), 'omm-record-menu-item-danger omm-record-menu-item-danger--confirm');
+    } else {
+      addMenuItem(menu, '删除', () => callbacks.onDelete(record), 'omm-record-menu-item-danger');
+    }
   }
 }
 

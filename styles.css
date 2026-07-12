@@ -654,6 +654,14 @@
   background: var(--background-modifier-error-hover, var(--background-modifier-hover));
 }
 
+/* Confirming delete: prominent red bg + white text to clearly warn */
+.omm-record-menu-item-danger--confirm {
+  background: var(--background-modifier-error, #e05d5d) !important;
+  color: var(--text-on-accent, #fff) !important;
+  font-weight: 700;
+  border-radius: var(--radius-s);
+}
+
 /* ---------- Record body: checkbox + rendered markdown ---------- */
 
 .omm-record-body {

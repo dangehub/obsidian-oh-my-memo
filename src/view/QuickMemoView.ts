@@ -15,11 +15,18 @@ export class QuickMemoView extends ItemView {
   private filters: ViewFilters = {};
   private editingRecordId: string | undefined;
   private openMenuRecordId: string | undefined;
+  /** Record ID whose delete button is in confirmation state (second click deletes). */
+  private confirmingDeleteId: string | undefined;
   private dayWatcher: number | undefined;
   /** Directory of the currently selected date's memo file — set during render,
    *  used by formatAttachmentLink for relative-path computation. */
   private currentMemoDir = '';
-  private sidebarCollapsed = false;
+  /** Sidebar collapsed by default — user can toggle it open if needed. */
+  private sidebarCollapsed = true;
+  /** Timestamp of the last render start, used to debounce rapid re-renders. */
+  private lastRenderTime = 0;
+  /** Pending render timer for coalescing rapid state changes. */
+  private renderTimer: number | null = null;
   /** `'all'` = show records across all dates; `'date'` = filter to selectedDate;
    *  `'range'` = filter to dateRange. */
   private viewMode: 'all' | 'date' | 'range' = 'all';
@@ -88,13 +95,17 @@ export class QuickMemoView extends ItemView {
     this.dayWatcher = window.setInterval(() => this.checkDayRollover(), 60_000);
     // Close an open record menu on the next tap/click anywhere outside it.
     activeDocument.addEventListener('pointerdown', this.handleOutsideInteraction, true);
-    // Attach the native Obsidian Markdown editor after the composer DOM is in the tree.
-    window.requestAnimationFrame(() => { this.initEditor(); });
   }
 
   /** Wire up the native Obsidian Markdown editor in the composer host div. */
   private initEditor(force = false): void {
-    if (!force && this.editor) return; // already initialized
+    if (!force && this.editor) {
+      // Editor instance already exists and was preserved across a DOM rebuild
+      // (detach/attach path). The host element was replaced by renderOverview(),
+      // so re-attach event listeners to the fresh host.
+      this.setupEditorHostListeners();
+      return;
+    }
     if (this.editor) {
       this.editor.destroy();
       this.editor = null;
@@ -104,7 +115,6 @@ export class QuickMemoView extends ItemView {
     // Don't init if host already has an editor child (re-render protection)
     if (host.querySelector('.cm-editor')) return;
 
-    const savedScrollTop = this.contentEl.scrollTop;
     this.editor = new NativeEditor(
       host,
       this.app,
@@ -114,52 +124,7 @@ export class QuickMemoView extends ItemView {
       },
     );
 
-    // CM6 auto-focuses its contentDOM on creation. The browser's default
-    // focus-scroll then scrolls the nearest scrollable ancestor (this.contentEl,
-    // potentially 30000+px tall with many record cards) to centre the editor —
-    // launching the page to the middle. We prevent this by repeatedly blurring
-    // the cm-content element and resetting scrollTop until CM6's async focus
-    // cycle completes (~400ms). After that the user can click to focus normally.
-    const container = this.contentEl;
-    const guard = (): void => {
-      const cmContent = container.querySelector<HTMLElement>('.omm-editor-host .cm-content');
-      if (cmContent && document.activeElement === cmContent) {
-        cmContent.blur();
-      }
-      if (container.scrollTop > 0) {
-        container.scrollTop = savedScrollTop;
-      }
-    };
-    // On mobile, run the focus guard longer to prevent keyboard flicker
-    const guardDuration = Platform.isMobile ? 2000 : 600;
-    const runGuard = (): void => {
-      guard();
-      if (Date.now() - guardStart < guardDuration) {
-        window.requestAnimationFrame(runGuard);
-      }
-    };
-    const guardStart = Date.now();
-    window.requestAnimationFrame(runGuard);
-
-    // Attach paste handler on the editor's DOM for image attachment support.
-    host.addEventListener('paste', this.handlePaste);
-
-    // Click-forwarding: clicking blank space in the host div focuses CM6
-    host.addEventListener('click', (e: MouseEvent) => {
-      if ((e.target as HTMLElement).closest('.cm-content')) return;
-      const cmContent = host.querySelector<HTMLElement>('.cm-content');
-      if (cmContent) {
-        e.preventDefault();
-        cmContent.focus();
-      }
-    });
-
-    // Prevent CM6 auto-focus from triggering the mobile keyboard
-    // Only focus when the user explicitly taps the editor
-    const cmContentEl = host.querySelector('.cm-content');
-    if (cmContentEl && document.activeElement === cmContentEl) {
-      (cmContentEl as HTMLElement).blur();
-    }
+    this.setupEditorHostListeners();
 
     // Restore saved draft from localStorage
     const savedDraft = localStorage.getItem(this.DRAFT_KEY);
@@ -167,6 +132,33 @@ export class QuickMemoView extends ItemView {
       this.editor.setValue(savedDraft);
       this.draftStatus = 'saved';
     }
+  }
+
+  /** Set up event listeners on the editor host element.
+   *  Called from initEditor() after creating the editor, and from the
+   *  preserved-editor path in render() when the .cm-editor DOM node
+   *  was re-attached to a fresh host after a re-render. */
+  private setupEditorHostListeners(): void {
+    const host = this.contentEl.querySelector<HTMLDivElement>('.omm-editor-host');
+    if (!host) return;
+
+    // Disable contentEditable to prevent CM6 auto-focus.
+    const cmContent = host.querySelector<HTMLElement>('.cm-content');
+    if (cmContent) {
+      cmContent.contentEditable = 'false';
+    }
+
+    // Enable editing and focus when user explicitly clicks/taps the editor area.
+    host.addEventListener('pointerdown', () => {
+      const content = host.querySelector<HTMLElement>('.cm-content');
+      if (content && content.contentEditable !== 'true') {
+        content.contentEditable = 'true';
+        content.focus();
+      }
+    });
+
+    // Attach paste handler on the editor's DOM for image attachment support.
+    host.addEventListener('paste', this.handlePaste);
 
     // Auto-save draft on content change
     host.addEventListener('input', () => {
@@ -343,6 +335,7 @@ export class QuickMemoView extends ItemView {
       return;
     }
     this.openMenuRecordId = undefined;
+    this.confirmingDeleteId = undefined;
     this.render();
   };
 
@@ -403,6 +396,26 @@ export class QuickMemoView extends ItemView {
   }
 
   private render(): void {
+    // If render was called very recently (e.g. rapid heatmap clicks), skip this
+    // synchronous call and schedule a single coalesced render via rAF.
+    const now = Date.now();
+    const DEBOUNCE_MS = 80;
+    if (now - this.lastRenderTime < DEBOUNCE_MS) {
+      if (this.renderTimer === null) {
+        this.renderTimer = window.setTimeout(() => {
+          this.renderTimer = null;
+          this.lastRenderTime = 0;  // force the next call through
+          this.render();
+        }, DEBOUNCE_MS);
+      }
+      return;
+    }
+    if (this.renderTimer !== null) {
+      window.clearTimeout(this.renderTimer);
+      this.renderTimer = null;
+    }
+    this.lastRenderTime = now;
+
     // Tear down the previous render's markdown child components before rebuilding.
     for (const child of this.renderChildren) {
       try {
@@ -426,6 +439,25 @@ export class QuickMemoView extends ItemView {
     // Preserve editor content across the full re-render so typed text isn't
     // lost when rebuilds or pill-switches destroy+recreate the CM6 editor.
     const savedEditorContent = this.editor?.getValue() ?? '';
+
+    // Preserve scroll position across re-render to prevent jitter when the
+    // DOM is rebuilt (e.g. heatmap/date selection while scrolling).
+    const savedScrollTop = this.contentEl.scrollTop;
+
+    // Detach the CM6 editor DOM node before renderOverview() clears the DOM
+    // with innerHTML = ''. Re-attach after render to avoid the auto-focus
+    // and keyboard pop on every EditorView construction.
+    let detachedEditor: HTMLElement | null = null;
+    if (this.editor) {
+      const oldHost = this.contentEl.querySelector<HTMLElement>('.omm-editor-host');
+      if (oldHost) {
+        const cmEditor = oldHost.querySelector<HTMLElement>('.cm-editor');
+        if (cmEditor && this.contentEl.contains(cmEditor)) {
+          detachedEditor = cmEditor;
+          cmEditor.remove();
+        }
+      }
+    }
 
     const allRecords = this.index.query({});
     let dateFilter: Partial<ViewFilters> = {};
@@ -463,6 +495,7 @@ export class QuickMemoView extends ItemView {
       dateRangeExpanded: this.dateRangeExpanded,
       dateRangeEditStart: this.dateRangeEditStart,
       dateRangeEditEnd: this.dateRangeEditEnd,
+      confirmingDeleteId: this.confirmingDeleteId,
       markdown: {
         render: (source, el) => {
           const component = new Component();
@@ -511,8 +544,14 @@ export class QuickMemoView extends ItemView {
         this.render();
       },
       onDelete: (record) => {
+        // First click: set confirming state; second click is handled via onConfirmDelete
+        this.confirmingDeleteId = recordKey(record);
+        this.render();
+      },
+      onConfirmDelete: (record) => {
         this.openMenuRecordId = undefined;
-        void this.deleteRecord(record);
+        this.confirmingDeleteId = undefined;
+        void this.quickDeleteRecord(record);
       },
       onCopyBlock: (record) => {
         this.openMenuRecordId = undefined;
@@ -532,6 +571,7 @@ export class QuickMemoView extends ItemView {
       },
       onToggleMenu: (recordId) => {
         this.openMenuRecordId = this.openMenuRecordId === recordId ? undefined : recordId;
+        this.confirmingDeleteId = undefined;
         this.render();
       },
       onTagContext: (tag, event) => {
@@ -634,20 +674,39 @@ export class QuickMemoView extends ItemView {
       });
     }
 
-    // Re-init the native editor after render — every render() destroys the
-    // old DOM via the callbacks' innerHTML clearing, so we need to destroy
-    // and recreate the editor instance bound to the fresh .omm-editor-host.
-    if (this.editor) {
-      this.editor.destroy();
-      this.editor = null;
+    // Preserve the CM6 editor instance across DOM rebuilds to avoid
+    // the auto-focus + keyboard pop on every EditorView construction.
+    if (detachedEditor && this.editor) {
+      const newHost = this.contentEl.querySelector<HTMLElement>('.omm-editor-host');
+      if (newHost && !newHost.querySelector('.cm-editor')) {
+        newHost.appendChild(detachedEditor);
+        // Editor preserved — just re-attach event listeners to the fresh host.
+        this.setupEditorHostListeners();
+      } else {
+        // Fallback: host not found or already has an editor.
+        this.editor.destroy();
+        this.editor = null;
+        this.initEditor();
+      }
+    } else {
+      // First time or detach failed: normal init.
+      if (this.editor) {
+        this.editor.destroy();
+        this.editor = null;
+      }
+      this.initEditor();
     }
-    this.initEditor();
-    // Editor content is restored synchronously — NativeEditor.create() is synchronous,
-    // so the editor is fully initialized by the time initEditor() returns.
-    if (savedEditorContent) {
-      (this.editor as NativeEditor | null)?.setValue(savedEditorContent);
+    // Restore editor content after either strategy above succeeded.
+    if (savedEditorContent && this.editor) {
+      this.editor.setValue(savedEditorContent);
     }
     this.initEditEditor();
+
+    // Restore scroll position after full DOM rebuild prevents jitter when
+    // state changes trigger re-render while the user is mid-scroll.
+    if (savedScrollTop > 0) {
+      this.contentEl.scrollTop = savedScrollTop;
+    }
   }
 
   private handlePaste = async (event: ClipboardEvent): Promise<void> => {
@@ -867,6 +926,16 @@ export class QuickMemoView extends ItemView {
   private async deleteRecord(record: QuickMemoRecord): Promise<void> {
     const confirmed = await confirmDialog(this.app, '删除记录', '删除这条 OhMyMemo？此操作会修改 Daily Note 文件。');
     if (!confirmed) return;
+    if (record.id) {
+      await this.repository.deleteRecord(record.id);
+    } else {
+      await this.repository.deleteRecordByLocation(record.filePath, record.lineStart, record.lineEnd);
+    }
+    await this.index.rebuild();
+    this.render();
+  }
+
+  private async quickDeleteRecord(record: QuickMemoRecord): Promise<void> {
     if (record.id) {
       await this.repository.deleteRecord(record.id);
     } else {
