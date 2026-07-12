@@ -1,7 +1,7 @@
 {
   "id": "oh-my-memo",
   "name": "OhMyMemo",
-  "version": "0.8.3",
+  "version": "0.8.4",
   "minAppVersion": "1.7.2",
   "description": "Markdown-native daily quick records, flash thoughts, todos, history, filters, and heatmap.",
   "author": "dangehub",
