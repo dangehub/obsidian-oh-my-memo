@@ -21,8 +21,9 @@ export class QuickMemoView extends ItemView {
   /** Directory of the currently selected date's memo file — set during render,
    *  used by formatAttachmentLink for relative-path computation. */
   private currentMemoDir = '';
-  /** Sidebar collapsed by default — user can toggle it open if needed. */
-  private sidebarCollapsed = true;
+  /** Sidebar collapsed by default on narrow screens (≤768 px),
+   *  expanded on wider screens. User can toggle manually afterwards. */
+  private sidebarCollapsed = window.innerWidth <= 768;
   /** Timestamp of the last render start, used to debounce rapid re-renders. */
   private lastRenderTime = 0;
   /** Pending render timer for coalescing rapid state changes. */
