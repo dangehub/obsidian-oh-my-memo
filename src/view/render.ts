@@ -138,6 +138,29 @@ function svgIconHtml(name: string, cls = 'omm-icon'): string {
   return `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
 }
 
+/**
+ * Format a tag for display:
+ * - #tag → return as-is
+ * - [[path/to/page]] → [[page]] (last path segment)
+ * - [[path/to/page|Display Text]] → [[Display Text]]
+ * - otherwise → return as-is
+ */
+function displayTag(tag: string): string {
+  if (tag.startsWith('#')) {
+    return tag;
+  }
+  if (tag.startsWith('[[')) {
+    const inner = tag.slice(2, -2);
+    const pipeIdx = inner.indexOf('|');
+    if (pipeIdx !== -1) {
+      return `[[${inner.slice(pipeIdx + 1)}]]`;
+    }
+    const segments = inner.split('/');
+    return `[[${segments[segments.length - 1]}]]`;
+  }
+  return tag;
+}
+
 export function renderOverview(root: HTMLElement, state: OverviewState, callbacks: OverviewCallbacks): void {
   root.innerHTML = '';
   root.classList.add('omm-root');
@@ -233,7 +256,7 @@ function renderSidebar(container: HTMLElement, state: OverviewState, callbacks: 
     const tags = appendDiv(container, 'omm-tags');
     for (const [tag, count] of state.tags) {
       const selected = state.filters.tag === tag;
-      const button = appendEl(tags, 'button', selected ? 'omm-tag-selected' : '', `${tag} ${count}${selected ? ' ✕' : ''}`);
+      const button = appendEl(tags, 'button', selected ? 'omm-tag-selected' : '', `${displayTag(tag)} ${count}`);
       button.setAttribute('aria-pressed', String(selected));
       button.title = selected ? '再次点击取消标签筛选' : '按此标签筛选';
       button.onclick = () => callbacks.onFilterChange({ tag: selected ? undefined : tag });
@@ -414,43 +437,60 @@ function renderMain(container: HTMLElement, state: OverviewState, callbacks: Ove
   };
   save.onclick = submit;
 
-  // ── Progressive date filter chip ──
-  // Shows when a date or range filter is active. Single-day mode shows [date ✕] [+ 结束日期],
-  // range mode shows [date 至 MM-DD ✕]. Clicking the date opens a picker (single) or re-opens
-  // the range editor (range). Clicking [+ 结束日期] expands an inline range editor.
-  if (state.viewMode === 'date' || state.viewMode === 'range') {
+  // ── Progressive filter chip row ──
+  // Shows when a date/range filter or tag filter is active.
+  // Date chip: single-day mode shows [date ✕] [+ 结束日期],
+  // range mode shows [date 至 MM-DD ✕].
+  // Tag chip: shows [displayTag(tag) ✕] when a tag filter is set.
+  const hasDateFilter = state.viewMode === 'date' || state.viewMode === 'range';
+  const hasTagFilter = Boolean(state.filters.tag);
+  if (hasDateFilter || hasTagFilter) {
     const chipRow = appendDiv(container, 'omm-filter-chip-row');
-    const chip = appendDiv(chipRow, 'omm-filter-chip');
-    const chipDateBtn = appendEl(chip, 'button', 'omm-filter-chip-date');
-    chipDateBtn.type = 'button';
-    if (state.viewMode === 'range' && state.dateRangeStart && state.dateRangeEnd) {
-      const endShort = state.dateRangeEnd.slice(5);
-      chipDateBtn.textContent = `${state.dateRangeStart} 至 ${endShort}`;
-      chipDateBtn.title = '点击编辑日期范围';
-      chipDateBtn.onclick = () => callbacks.onEditDateRange(state.dateRangeStart!, state.dateRangeEnd!);
-    } else {
-      chipDateBtn.textContent = state.selectedDate;
-      chipDateBtn.title = '点击切换日期';
-      chipDateBtn.onclick = () => {
-        // Open a hidden date input's picker
-        const picker = appendEl(chipRow, 'input', 'omm-filter-chip-picker');
-        picker.type = 'date';
-        picker.value = state.selectedDate;
-        picker.style.cssText = 'position:absolute;opacity:0;pointer-events:none;width:1px;height:1px';
-        picker.onchange = () => { if (picker.value) callbacks.onSelectDate(picker.value); };
-        if (picker.showPicker) { picker.showPicker(); } else { picker.click(); }
-      };
-    }
-    const chipClose = appendEl(chip, 'button', 'omm-filter-chip-close', '✕');
-    chipClose.type = 'button';
-    chipClose.title = '清除日期筛选';
-    chipClose.onclick = () => callbacks.onShowAll();
 
-    // In single mode, show [+ 结束日期] trigger
-    if (state.viewMode === 'date') {
-      const expandBtn = appendEl(chipRow, 'button', 'omm-filter-expand-trigger', '+ 结束日期');
-      expandBtn.type = 'button';
-      expandBtn.onclick = () => callbacks.onExpandDateRange(state.selectedDate);
+    // Date / range chip
+    if (hasDateFilter) {
+      const chip = appendDiv(chipRow, 'omm-filter-chip');
+      const chipDateBtn = appendEl(chip, 'button', 'omm-filter-chip-date');
+      chipDateBtn.type = 'button';
+      if (state.viewMode === 'range' && state.dateRangeStart && state.dateRangeEnd) {
+        const endShort = state.dateRangeEnd.slice(5);
+        chipDateBtn.textContent = `${state.dateRangeStart} 至 ${endShort}`;
+        chipDateBtn.title = '点击编辑日期范围';
+        chipDateBtn.onclick = () => callbacks.onEditDateRange(state.dateRangeStart!, state.dateRangeEnd!);
+      } else {
+        chipDateBtn.textContent = state.selectedDate;
+        chipDateBtn.title = '点击切换日期';
+        chipDateBtn.onclick = () => {
+          // Open a hidden date input's picker
+          const picker = appendEl(chipRow, 'input', 'omm-filter-chip-picker');
+          picker.type = 'date';
+          picker.value = state.selectedDate;
+          picker.style.cssText = 'position:absolute;opacity:0;pointer-events:none;width:1px;height:1px';
+          picker.onchange = () => { if (picker.value) callbacks.onSelectDate(picker.value); };
+          if (picker.showPicker) { picker.showPicker(); } else { picker.click(); }
+        };
+      }
+      const chipClose = appendEl(chip, 'button', 'omm-filter-chip-close', '✕');
+      chipClose.type = 'button';
+      chipClose.title = '清除日期筛选';
+      chipClose.onclick = () => callbacks.onShowAll();
+
+      // In single mode, show [+ 结束日期] trigger
+      if (state.viewMode === 'date') {
+        const expandBtn = appendEl(chipRow, 'button', 'omm-filter-expand-trigger', '+ 结束日期');
+        expandBtn.type = 'button';
+        expandBtn.onclick = () => callbacks.onExpandDateRange(state.selectedDate);
+      }
+    }
+
+    // Tag filter chip
+    if (hasTagFilter) {
+      const tagChip = appendDiv(chipRow, 'omm-filter-chip');
+      const tagLabel = appendEl(tagChip, 'span', 'omm-filter-chip-tag', displayTag(state.filters.tag!));
+      const tagClose = appendEl(tagChip, 'button', 'omm-filter-chip-close', '✕');
+      tagClose.type = 'button';
+      tagClose.title = '清除标签筛选';
+      tagClose.onclick = () => callbacks.onFilterChange({ tag: undefined });
     }
   }
 
@@ -692,7 +732,7 @@ function renderRecord(list: HTMLElement, record: QuickMemoRecord, editing: boole
     const tagsEl = appendDiv(card, 'omm-record-tags');
     tagsEl.innerHTML = svgIconHtml('tag', 'omm-icon-sm');
     for (const tag of record.tags) {
-      const tagBtn = appendEl(tagsEl, 'span', 'omm-record-tag', `${tag}`);
+      const tagBtn = appendEl(tagsEl, 'span', 'omm-record-tag', `${displayTag(tag)}`);
       tagBtn.onclick = (): void => callbacks.onFilterChange({ tag });
     }
   }

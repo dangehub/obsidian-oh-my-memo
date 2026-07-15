@@ -158,6 +158,7 @@
   color: var(--text-muted);
   cursor: pointer;
   transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+  word-break: break-all;
 }
 
 .omm-tags button:hover {
@@ -189,6 +190,7 @@
   display: inline-flex;
   align-items: center;
   transition: color 160ms ease;
+  word-break: break-all;
 }
 
 .omm-record-tag:hover {
@@ -1544,6 +1546,7 @@
   border-radius: 999px;
   background: var(--background-modifier-hover);
   font-size: var(--font-ui-small);
+  word-break: break-all;
 }
 
 .omm-filter-chip .omm-filter-chip-date {
