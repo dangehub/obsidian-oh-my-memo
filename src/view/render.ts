@@ -632,7 +632,6 @@ function renderRangeTimeline(container: HTMLElement, state: OverviewState, callb
 }
 
 function renderCrossDateTimeline(container: HTMLElement, state: OverviewState, callbacks: OverviewCallbacks, markdown: MarkdownApi): void {
-  appendEl(container, 'h3', '', '筛选结果');
   if (state.records.length === 0) {
     const list = appendDiv(container, 'omm-record-list');
     appendDiv(list, 'omm-empty', '没有匹配的 Quick Memo。');
