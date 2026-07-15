@@ -11,6 +11,7 @@ const BARE_TASK_RE = /^- \[( |x|X)\] (\d{2}:\d{2})\s*$/u;
 // Bare memo line (multi-line): matches "- HH:MM" with nothing after time.
 const BARE_MEMO_RE = /^- (\d{2}:\d{2})\s*$/u;
 const TAG_RE = /(^|\s)(#[\p{L}\p{N}_/-]+)/gu;
+const WIKI_TAG_RE = /(?<!\!)\[\[([^\]]+)\]\]/g;
 
 export class QuickMemoParser {
   private readonly heading: () => string;
@@ -239,6 +240,9 @@ function extractTags(text: string): string[] {
   const tags = new Set<string>();
   for (const match of text.matchAll(TAG_RE)) {
     tags.add(match[2]);
+  }
+  for (const match of text.matchAll(WIKI_TAG_RE)) {
+    tags.add(match[0]);
   }
   return Array.from(tags);
 }

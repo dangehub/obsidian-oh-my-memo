@@ -233,7 +233,7 @@ function renderSidebar(container: HTMLElement, state: OverviewState, callbacks: 
     const tags = appendDiv(container, 'omm-tags');
     for (const [tag, count] of state.tags) {
       const selected = state.filters.tag === tag;
-      const button = appendEl(tags, 'button', selected ? 'omm-tag-selected' : '', `${tag} ${count}`);
+      const button = appendEl(tags, 'button', selected ? 'omm-tag-selected' : '', `${tag} ${count}${selected ? ' ✕' : ''}`);
       button.setAttribute('aria-pressed', String(selected));
       button.title = selected ? '再次点击取消标签筛选' : '按此标签筛选';
       button.onclick = () => callbacks.onFilterChange({ tag: selected ? undefined : tag });
@@ -692,7 +692,7 @@ function renderRecord(list: HTMLElement, record: QuickMemoRecord, editing: boole
     const tagsEl = appendDiv(card, 'omm-record-tags');
     tagsEl.innerHTML = svgIconHtml('tag', 'omm-icon-sm');
     for (const tag of record.tags) {
-      const tagBtn = appendEl(tagsEl, 'span', 'omm-record-tag', `#${tag}`);
+      const tagBtn = appendEl(tagsEl, 'span', 'omm-record-tag', `${tag}`);
       tagBtn.onclick = (): void => callbacks.onFilterChange({ tag });
     }
   }
