@@ -705,11 +705,7 @@ function renderRecord(list: HTMLElement, record: QuickMemoRecord, editing: boole
     checkbox.type = 'checkbox';
     checkbox.checked = Boolean(record.completed);
     checkbox.setAttribute('aria-label', record.completed ? '标记为未完成' : '标记为完成');
-    if (record.id) {
-      checkbox.onchange = () => callbacks.onToggleTodo(record);
-    } else {
-      checkbox.disabled = true;
-    }
+    checkbox.onchange = () => callbacks.onToggleTodo(record);
   }
   const contentEl = appendDiv(body, 'omm-record-content');
   markdown.render(record.body ? `${record.content}\n${record.body}` : record.content, contentEl);

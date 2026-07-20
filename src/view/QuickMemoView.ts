@@ -198,8 +198,8 @@ export class QuickMemoView extends ItemView {
       host,
       this.app,
       () => {
-        // Cmd/Ctrl+Enter handler — save the current record
-        if (this.editingRecordId !== undefined && record?.id) {
+        // Cmd/Ctrl+Enter handler — save the current record (works with or without block ID)
+        if (this.editingRecordId !== undefined && record) {
           void this.saveEdit(record);
         }
       },
@@ -894,32 +894,35 @@ export class QuickMemoView extends ItemView {
   }
 
   private async toggleTodo(record: QuickMemoRecord): Promise<void> {
-    if (!record.id) {
-      new Notice('该记录缺少块 ID，请先补全 ID 后再勾选。');
-      this.render();
-      return;
+    if (record.id) {
+      await this.repository.toggleTodo(record.id);
+    } else {
+      await this.repository.toggleTodoByLocation(record);
     }
-    await this.repository.toggleTodo(record.id);
     await this.index.rebuild();
     this.render();
   }
 
   private async saveEdit(record: QuickMemoRecord): Promise<void> {
-    if (!record.id) {
-      new Notice('该记录缺少块 ID，请先补全 ID 后再编辑。');
-      return;
-    }
     // Read content from the inline NativeEditor
     const raw = this.editEditor?.getValue() ?? '';
     const [firstLine, ...bodyLines] = raw.replace(/\r\n/gu, '\n').split('\n');
     const typeSelect = this.contentEl.querySelector<HTMLSelectElement>('.omm-edit-type');
     const type = (typeSelect?.value ?? 'memo') as QuickMemoType;
 
-    await this.repository.updateRecord(record.id, {
-      type,
-      content: firstLine.trim(),
-      body: bodyLines.join('\n') || undefined,
-    });
+    if (record.id) {
+      await this.repository.updateRecord(record.id, {
+        type,
+        content: firstLine.trim(),
+        body: bodyLines.join('\n') || undefined,
+      });
+    } else {
+      await this.repository.updateRecordByLocation(record, {
+        type,
+        content: firstLine.trim(),
+        body: bodyLines.join('\n') || undefined,
+      });
+    }
 
     // Destroy the edit editor before re-render
     if (this.editEditor) {

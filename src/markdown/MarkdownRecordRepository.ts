@@ -52,10 +52,30 @@ export class MarkdownRecordRepository {
     await this.replaceLines(located.filePath, located.record.lineStart, located.record.lineEnd, replacement);
   }
 
+  /** Update a record using its parsed location fields, without requiring a block ID. */
+  async updateRecordByLocation(record: QuickMemoRecord, changes: { type?: QuickMemoType; content?: string; body?: string; completed?: boolean }): Promise<void> {
+    const nextDraft: RecordDraft = {
+      date: record.date,
+      time: record.time,
+      type: changes.type ?? record.type,
+      content: changes.content ?? record.content,
+      body: changes.body ?? record.body,
+      completed: changes.completed ?? record.completed,
+    };
+    const replacement = this.parser.serializeRecord(nextDraft, record.id);
+    await this.replaceLines(record.filePath, record.lineStart, record.lineEnd, replacement);
+  }
+
   async toggleTodo(id: string): Promise<void> {
     const located = await this.locateById(id);
     if (located.record.type !== 'todo') throw new Error(`Record is not a todo: ${id}`);
     await this.updateRecord(id, { completed: !located.record.completed });
+  }
+
+  /** Toggle a todo record using its parsed location fields, without requiring a block ID. */
+  async toggleTodoByLocation(record: QuickMemoRecord): Promise<void> {
+    if (record.type !== 'todo') throw new Error(`Record is not a todo`);
+    await this.updateRecordByLocation(record, { completed: !record.completed });
   }
 
   async deleteRecord(id: string): Promise<void> {
