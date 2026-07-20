@@ -50,6 +50,19 @@ describe('MarkdownRecordRepository', () => {
     expect(content).toContain('- 09:12\n  new #tag\n  body ^omm-20260618-091200-a1b2');
   });
 
+  it('updates a record without a block ID via location-based fallback', async () => {
+    const vault = new FakeVault({
+      '2026-06-18.md': '# Day\n\n## Quick Memo\n\n- 09:12 pure markdown #tag\n',
+    });
+    const repo = makeRepo(vault, { ...DEFAULT_SETTINGS, enableBlockIds: false, quickMemoHeading: '## Quick Memo' });
+    const records = await repo.readRecords('2026-06-18');
+    expect(records[0].id).toBeUndefined();
+
+    await repo.updateRecordByLocation(records[0], { content: 'updated without id', body: 'new body' });
+    const content = await vault.read('2026-06-18.md');
+    expect(content).toContain('- 09:12\n  updated without id\n  new body');
+  });
+
   it('toggles a todo', async () => {
     const vault = new FakeVault({
       '2026-06-18.md': '# Day\n\n## Quick Memo\n\n- [ ] 10:20 task ^omm-20260618-102000-c3d4\n',
@@ -57,6 +70,29 @@ describe('MarkdownRecordRepository', () => {
     const repo = makeRepo(vault);
     await repo.toggleTodo('omm-20260618-102000-c3d4');
     expect(await vault.read('2026-06-18.md')).toContain('- [x] 10:20 task ^omm-20260618-102000-c3d4');
+  });
+
+  it('toggles a todo without a block ID via location-based fallback', async () => {
+    const vault = new FakeVault({
+      '2026-06-18.md': '# Day\n\n## Quick Memo\n\n- [ ] 10:20 task without id\n',
+    });
+    const repo = makeRepo(vault, { ...DEFAULT_SETTINGS, enableBlockIds: false, quickMemoHeading: '## Quick Memo' });
+    const records = await repo.readRecords('2026-06-18');
+    expect(records[0].id).toBeUndefined();
+    expect(records[0].type).toBe('todo');
+
+    await repo.toggleTodoByLocation(records[0]);
+    const content = await vault.read('2026-06-18.md');
+    expect(content).toContain('- [x] 10:20 task without id');
+  });
+
+  it('toggleTodoByLocation throws for non-todo records', async () => {
+    const vault = new FakeVault({
+      '2026-06-18.md': '# Day\n\n## Quick Memo\n\n- 09:12 a memo not a todo\n',
+    });
+    const repo = makeRepo(vault, { ...DEFAULT_SETTINGS, enableBlockIds: false, quickMemoHeading: '## Quick Memo' });
+    const records = await repo.readRecords('2026-06-18');
+    await expect(repo.toggleTodoByLocation(records[0])).rejects.toThrow('Record is not a todo');
   });
 
   it('deletes a record', async () => {
