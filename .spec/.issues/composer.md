@@ -10,3 +10,6 @@ created: 2026-07-21T17:23:46.460Z
 
 <!-- reply: unknown @ 2026-07-21T18:17:57.033Z -->
 用户已在真实 Obsidian 验收确认 Editing Toolbar 可正确嵌入，先前 bridge 改动有效。新增验收：composer 太窄，桌面端需允许用户自由拖拽调整 composer 整体宽度；调整对象必须是同时包住 、Editing Toolbar 注入目标、编辑区和 footer 的统一容器，不能只改变 CM6 editor 宽度。宽度保存至 OMM settings 并在重启后恢复；受页面内容区上限约束且有合理最小宽度；移动端强制 100% 宽度、隐藏 resize handle、不得横向溢出。保持 bridge、Save、Cmd/Ctrl+Enter、类型单 SVG、附件/时间/标签/链接、自动保存状态和当前测试库 data.json 保护。
+
+<!-- reply: unknown @ 2026-07-21T18:28:25.158Z -->
+纠正：用户说输入框“太窄”指**纵向高度不足**，不是横向宽度。取消任何横向宽度拖拽/持久化方案。桌面端改为 composer 编辑区域的底部或右下角可访问拖拽手柄，调整纵向高度并保存到 OMM settings；横向继续占据响应式内容区全宽，Editing Toolbar、 与 footer 同宽对齐。高度需 min/max 且不遮住时间线/超出视口；移动端隐藏手柄，舒适最小高度+内容自然增长，无布局溢出。
