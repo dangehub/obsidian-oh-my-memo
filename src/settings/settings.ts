@@ -18,6 +18,7 @@ export const DEFAULT_SETTINGS: QuickMemoSettings = {
   openOnStartup: false,
   insertMode: 'heading',
   parseMode: 'heading',
+  composerHeight: null,
 };
 
 const VALID_SORTS: SortDirection[] = ['asc', 'desc'];
@@ -42,6 +43,9 @@ export function normalizeSettings(raw: unknown): QuickMemoSettings {
   merged.enableBlockIds = typeof merged.enableBlockIds === 'boolean' ? merged.enableBlockIds : DEFAULT_SETTINGS.enableBlockIds;
   merged.insertMode = VALID_INSERT_MODES.includes(merged.insertMode as InsertMode) ? merged.insertMode as InsertMode : DEFAULT_SETTINGS.insertMode;
   merged.parseMode = VALID_PARSE_MODES.includes(merged.parseMode as ParseMode) ? merged.parseMode as ParseMode : DEFAULT_SETTINGS.parseMode;
+  merged.composerHeight = typeof merged.composerHeight === 'number' && Number.isFinite(merged.composerHeight)
+    ? merged.composerHeight
+    : null;
 
   return merged;
 }

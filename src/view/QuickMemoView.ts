@@ -8,6 +8,7 @@ import { randomIdSuffix } from '../markdown/id';
 import { filterRecordsForView, rollSelectedDate, sortRecordsForDisplay, type ViewFilters } from './viewState';
 import { renderOverview, recordKey } from './render';
 import { NativeEditor } from '../editor/native-editor';
+import { installEditorBridge, type EditorBridgeHandle } from '../editor/editor-bridge';
 
 export class QuickMemoView extends ItemView {
   private selectedDate = today();
@@ -60,6 +61,7 @@ export class QuickMemoView extends ItemView {
   private saveTimer: number | null = null;
   /** localStorage key for draft persistence. */
   private readonly DRAFT_KEY = 'omm_editor_draft';
+  private bridge: EditorBridgeHandle | null = null;
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -87,6 +89,7 @@ export class QuickMemoView extends ItemView {
     if (Platform.isMobile) {
       this.contentEl.style.paddingBottom = '80px';
     }
+    this.bridge = installEditorBridge(this.app);
     // Quick-load today's records so the view isn't blank while the full index
     // rebuilds in the background — the user sees today's content immediately.
     await this.preloadToday();
@@ -105,6 +108,7 @@ export class QuickMemoView extends ItemView {
       // (detach/attach path). The host element was replaced by renderOverview(),
       // so re-attach event listeners to the fresh host.
       this.setupEditorHostListeners();
+      this.bridge?.notifyReattached(this);
       return;
     }
     if (this.editor) {
@@ -126,6 +130,7 @@ export class QuickMemoView extends ItemView {
     );
 
     this.setupEditorHostListeners();
+    if (this.editor?.obsidianEditor) this.bridge?.activate(this.editor.obsidianEditor, this);
 
     // Restore saved draft from localStorage
     const savedDraft = localStorage.getItem(this.DRAFT_KEY);
@@ -313,6 +318,8 @@ export class QuickMemoView extends ItemView {
       this.saveTimer = null;
     }
     activeDocument.removeEventListener('pointerdown', this.handleOutsideInteraction, true);
+    this.bridge?.cleanup();
+    this.bridge = null;
     if (this.editEditor) {
       this.editEditor.destroy();
       this.editEditor = null;
@@ -493,6 +500,7 @@ export class QuickMemoView extends ItemView {
       viewMode: this.viewMode,
       dateRangeStart: this.dateRange?.start,
       dateRangeEnd: this.dateRange?.end,
+      editorHeight: this.settings.composerHeight,
       dateRangeExpanded: this.dateRangeExpanded,
       dateRangeEditStart: this.dateRangeEditStart,
       dateRangeEditEnd: this.dateRangeEditEnd,
@@ -660,6 +668,11 @@ export class QuickMemoView extends ItemView {
         this.datetimePickerOpen = false;
         this.render();
       },
+      onInsertComposerText: (text) => this.editor?.insertAtCursor(text),
+      onResizeEditorHeight: (height) => {
+        this.settings.composerHeight = height;
+        void this.saveSettings();
+      },
     });
 
     restoreFocus?.();
@@ -683,6 +696,7 @@ export class QuickMemoView extends ItemView {
         newHost.appendChild(detachedEditor);
         // Editor preserved — just re-attach event listeners to the fresh host.
         this.setupEditorHostListeners();
+        this.bridge?.notifyReattached(this);
       } else {
         // Fallback: host not found or already has an editor.
         this.editor.destroy();

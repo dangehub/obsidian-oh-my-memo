@@ -37,6 +37,7 @@ describe('settings', () => {
       openOnStartup: false,
       insertMode: 'heading',
       parseMode: 'heading',
+      composerHeight: null,
     });
   });
 
@@ -53,5 +54,11 @@ describe('settings', () => {
   it('repairs invalid enum values', () => {
     const normalized = normalizeSettings({ sortDirection: 'newest' });
     expect(normalized.sortDirection).toBe('desc');
+  });
+
+  it('keeps only finite composer heights', () => {
+    expect(normalizeSettings({ composerHeight: 320 }).composerHeight).toBe(320);
+    expect(normalizeSettings({ composerHeight: '320' }).composerHeight).toBeNull();
+    expect(normalizeSettings({ composerHeight: Number.NaN }).composerHeight).toBeNull();
   });
 });

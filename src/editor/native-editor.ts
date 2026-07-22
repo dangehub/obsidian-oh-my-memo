@@ -206,6 +206,11 @@ export class NativeEditor {
     }
   }
 
+  /** The actual Obsidian Editor used by the composer integration bridge. */
+  get obsidianEditor(): Editor | null {
+    return this.editor;
+  }
+
   /** Destroy the editor and release all resources. */
   destroy(): void {
     // Detach keyboard handler.

@@ -360,7 +360,7 @@ describe('renderOverview', () => {
     expect(todayBtn!.classList.contains('omm-heatmap-today--current')).toBe(true);
   });
 
-  it('shows the composer datetime in the header', () => {
+  it('renders the single-SVG composer toggle and native host', () => {
     const root = document.createElement('div');
     renderOverview(root, {
       settings: DEFAULT_SETTINGS,
@@ -378,10 +378,48 @@ describe('renderOverview', () => {
       recordsTotal: 0,
       viewMode: 'all',
       dateRangeExpanded: false,
-      composerDatetime: '2026-06-21 15:30',
+      inputMode: 'memo',
+      editorHeight: 200,
     }, makeCallbacks());
 
-    expect(root.querySelector('.omm-datetime-text')?.textContent).toBe('2026-06-21 15:30');
+    const toggle = root.querySelector<HTMLButtonElement>('.omm-composer-type-toggle');
+    expect(toggle?.querySelector('svg')).toBeTruthy();
+    expect(toggle?.classList.contains('omm-composer-type-toggle--memo')).toBe(true);
+    expect(root.querySelector('.omm-native-editor-host')).toBeTruthy();
+    expect((root.querySelector('.omm-editor-host') as HTMLElement).style.minHeight).toBe('200px');
+    expect(root.querySelector('.omm-resize-handle')?.parentElement?.classList.contains('omm-composer-body')).toBe(true);
+  });
+
+  it('switches type and inserts tag or link through composer callbacks', () => {
+    const root = document.createElement('div');
+    const callbacks = makeCallbacks();
+    renderOverview(root, {
+      settings: DEFAULT_SETTINGS, records: [], tags: [], heatmap: [], selectedDate: '2026-06-21', todayDate: '2026-06-21',
+      filters: {}, stats: makeStats(), warningCount: 0, sortDirection: 'desc', sidebarCollapsed: false, recordsTotal: 0,
+      viewMode: 'all', dateRangeExpanded: false, inputMode: 'todo',
+    }, callbacks);
+
+    (root.querySelector('.omm-composer-type-toggle') as HTMLButtonElement).click();
+    expect(callbacks.onTypeChange).toHaveBeenCalledWith('memo');
+    const tools = Array.from(root.querySelectorAll<HTMLButtonElement>('.omm-composer-tool'));
+    tools.find((tool) => tool.title === '插入标签')?.click();
+    tools.find((tool) => tool.title === '链接笔记')?.click();
+    expect(callbacks.onInsertComposerText).toHaveBeenCalledWith('#');
+    expect(callbacks.onInsertComposerText).toHaveBeenCalledWith('[[');
+  });
+
+  it('saves native composer content through the existing callback', () => {
+    const root = document.createElement('div');
+    const callbacks = { ...makeCallbacks(), getComposerValue: vi.fn(() => '  保留内容  '), clearComposer: vi.fn() };
+    renderOverview(root, {
+      settings: DEFAULT_SETTINGS, records: [], tags: [], heatmap: [], selectedDate: '2026-06-21', todayDate: '2026-06-21',
+      filters: {}, stats: makeStats(), warningCount: 0, sortDirection: 'desc', sidebarCollapsed: false, recordsTotal: 0,
+      viewMode: 'all', dateRangeExpanded: false, inputMode: 'todo',
+    }, callbacks);
+
+    (root.querySelector('.omm-save') as HTMLButtonElement).click();
+    expect(callbacks.onSave).toHaveBeenCalledWith({ type: 'todo', content: '保留内容' });
+    expect(callbacks.clearComposer).toHaveBeenCalledOnce();
   });
 
   it('groups records by date when a tag or text filter spans multiple dates', () => {
@@ -441,6 +479,9 @@ function makeCallbacks() {
     onHeatmapPrevMonth: vi.fn(),
     onHeatmapNextMonth: vi.fn(),
     onAttachFile: vi.fn(),
+    onTypeChange: vi.fn(),
+    onInsertComposerText: vi.fn(),
+    onResizeEditorHeight: vi.fn(),
   };
 }
 
