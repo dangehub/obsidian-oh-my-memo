@@ -38,6 +38,8 @@ export interface QuickMemoSettings {
   insertMode: InsertMode;
   /** Which parts of the file are parsed: only under the heading, or the entire file. */
   parseMode: ParseMode;
+  /** Desktop composer editor minimum height in pixels; null uses the default. */
+  composerHeight: number | null;
 }
 
 export interface RecordDraft {

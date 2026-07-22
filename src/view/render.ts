@@ -62,6 +62,8 @@ export interface OverviewState {
   dateRangeEditStart?: string;
   /** End date for the expansion panel editor (pre-filled when editing). */
   dateRangeEditEnd?: string;
+  /** Saved desktop composer editor minimum height; null uses the default. */
+  editorHeight?: number | null;
 }
 
 export interface OverviewCallbacks {
@@ -106,6 +108,10 @@ export interface OverviewCallbacks {
   onDatetimeChange?(datetime: string): void;
   /** Confirm deletion after the user clicked "删除" a second time. */
   onConfirmDelete?(record: QuickMemoRecord): void;
+  /** Insert content into the native composer at its current selection. */
+  onInsertComposerText?(text: string): void;
+  /** Persist a desktop composer height after a completed resize drag. */
+  onResizeEditorHeight?(height: number): void;
 }
 
 /** Type filter option values, including composite todo-status filters. */
@@ -131,6 +137,7 @@ const SVG_ICONS: Record<string, string> = {
   search: '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
   tag: '<circle cx="7.5" cy="7.5" r="1.5"/><path d="m20.59 13.41-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82Z"/>',
   save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
+  link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
 };
 
 function svgIconHtml(name: string, cls = 'omm-icon'): string {
@@ -309,40 +316,86 @@ function renderMain(container: HTMLElement, state: OverviewState, callbacks: Ove
 
   const composer = appendDiv(container, 'omm-composer');
 
-  // ── Composer header: pill toggle + datetime ──
-  const header = appendDiv(composer, 'omm-composer-header');
+  const body = appendDiv(composer, 'omm-composer-body');
+  const input = appendEl(body, 'div', 'omm-editor-host omm-native-editor-host');
+  const minimumEditorHeight = 80;
+  const maximumEditorHeight = Math.min(window.innerHeight * 0.7, 600);
+  const savedEditorHeight = state.editorHeight ?? minimumEditorHeight;
+  input.style.minHeight = `${Math.round(Math.min(Math.max(minimumEditorHeight, savedEditorHeight), maximumEditorHeight))}px`;
 
-  // Type pills replacing the old dropdown
-  const pills = appendDiv(header, 'omm-type-pills');
-  const memoPill = appendEl(pills, 'button', `omm-type-pill${state.inputMode === 'todo' ? '' : ' active'}`);
-  memoPill.type = 'button';
-  memoPill.setAttribute('data-type', 'memo');
-  memoPill.innerHTML = `${svgIconHtml('pen')} 闪念`;
-  memoPill.onclick = () => callbacks.onTypeChange?.('memo');
+  const resizeHandle = appendEl(body, 'div', 'omm-resize-handle');
+  resizeHandle.setAttribute('aria-label', '调整编辑区高度');
+  resizeHandle.addEventListener('mousedown', (event: MouseEvent) => {
+    event.preventDefault();
+    const startY = event.clientY;
+    const startHeight = input.offsetHeight;
+    const maximum = maximumEditorHeight;
+    const resize = (move: MouseEvent): void => {
+      const height = Math.round(Math.min(Math.max(minimumEditorHeight, startHeight + move.clientY - startY), maximum));
+      input.style.minHeight = `${height}px`;
+    };
+    const finish = (up: MouseEvent): void => {
+      activeDocument.removeEventListener('mousemove', resize);
+      activeDocument.removeEventListener('mouseup', finish);
+      const height = Math.round(Math.min(Math.max(minimumEditorHeight, startHeight + up.clientY - startY), maximum));
+      if (height !== state.editorHeight) callbacks.onResizeEditorHeight?.(height);
+    };
+    activeDocument.addEventListener('mousemove', resize);
+    activeDocument.addEventListener('mouseup', finish);
+  });
 
-  const todoPill = appendEl(pills, 'button', `omm-type-pill${state.inputMode === 'todo' ? ' active' : ''}`);
-  todoPill.type = 'button';
-  todoPill.setAttribute('data-type', 'todo');
-  todoPill.innerHTML = `${svgIconHtml('check-square')} 待办`;
-  todoPill.onclick = () => callbacks.onTypeChange?.('todo');
+  // Hidden file input for image attachment
+  const attachInput = appendEl(composer, 'input', 'omm-attach-input');
+  attachInput.type = 'file';
+  attachInput.accept = 'image/*';
+  attachInput.style.display = 'none';
+  attachInput.onchange = () => {
+    const file = attachInput.files?.[0];
+    if (file) callbacks.onAttachFile(file, input);
+    attachInput.value = '';
+  };
 
-  // Datetime display (right side of header)
-  const dtWrap = appendDiv(header, 'omm-datetime-wrap');
-  dtWrap.style.whiteSpace = 'nowrap';
+  const footer = appendDiv(composer, 'omm-composer-footer');
+  const footerLeft = appendDiv(footer, 'omm-composer-footer-left');
+  const isTodo = state.inputMode === 'todo';
+  const typeToggle = appendEl(footerLeft, 'button', `omm-composer-type-toggle omm-composer-type-toggle--${isTodo ? 'todo' : 'memo'}`);
+  typeToggle.type = 'button';
+  typeToggle.innerHTML = svgIconHtml(isTodo ? 'check-square' : 'pen');
+  typeToggle.title = isTodo ? '当前为待办，点击切换为闪念' : '当前为闪念，点击切换为待办';
+  typeToggle.setAttribute('aria-label', typeToggle.title);
+  typeToggle.onclick = () => callbacks.onTypeChange?.(isTodo ? 'memo' : 'todo');
+  appendEl(footerLeft, 'span', 'omm-footer-sep');
 
-  const hasCustomTime = state.composerDatetime && state.composerDatetime.trim() !== '';
-  const dtBtn = appendDiv(dtWrap, 'omm-datetime-btn');
-  if (hasCustomTime) {
-    dtBtn.innerHTML = `${svgIconHtml('clock')}<span class="omm-datetime-text">${state.composerDatetime}</span>`;
-  } else {
-    dtBtn.innerHTML = `${svgIconHtml('clock')}`;
-    dtBtn.title = '设置自定义日期时间';
-  }
-  dtBtn.onclick = () => callbacks.onToggleDatetimePicker?.();
+  const addTool = (title: string, icon: string, action: () => void): void => {
+    const button = appendEl(footerLeft, 'button', 'omm-composer-tool');
+    button.type = 'button';
+    button.title = title;
+    button.innerHTML = svgIconHtml(icon);
+    button.onclick = action;
+  };
+  addTool('添加附件', 'image', () => attachInput.click());
+  addTool('手动时间', 'clock', () => callbacks.onToggleDatetimePicker?.());
+  addTool('插入标签', 'tag', () => callbacks.onInsertComposerText?.('#'));
+  addTool('链接笔记', 'link', () => callbacks.onInsertComposerText?.('[['));
 
-  // Datetime picker popup (shown when toggled)
+  const draftStatus = appendDiv(footerLeft, 'omm-draft-status');
+  appendEl(draftStatus, 'span', 'omm-draft-dot');
+  appendEl(draftStatus, 'span', '', state.draftStatus === 'saved' ? '已自动保存' : state.draftStatus === 'saving' ? '正在保存…' : '自动保存草稿');
+  if (state.draftStatus === 'saved') draftStatus.classList.add('saved');
+
+  const save = appendEl(footer, 'button', 'omm-save');
+  save.type = 'button';
+  save.innerHTML = `${svgIconHtml('save', 'omm-icon-sm')} 保存`;
+  const submit = (): void => {
+    const content = (callbacks.getComposerValue?.() ?? '').replace(/\r\n/gu, '\n').trim();
+    if (!content) return;
+    callbacks.onSave({ type: state.inputMode ?? 'memo', content });
+    callbacks.clearComposer?.();
+  };
+  save.onclick = submit;
+
   if (state.datetimePickerOpen) {
-    const popup = appendDiv(dtWrap, 'omm-datetime-popup');
+    const popup = appendDiv(composer, 'omm-datetime-popup');
 
     // Row container for date + time side by side
     const row = appendDiv(popup, 'omm-datetime-row');
@@ -376,9 +429,9 @@ function renderMain(container: HTMLElement, state: OverviewState, callbacks: Ove
     cancelBtn.onclick = () => callbacks.onToggleDatetimePicker?.();
   }
 
-  // If custom time, add reset button
+  const hasCustomTime = state.composerDatetime && state.composerDatetime.trim() !== '';
   if (hasCustomTime) {
-    const resetBtn = appendEl(dtWrap, 'button', 'omm-datetime-reset');
+    const resetBtn = appendEl(composer, 'button', 'omm-datetime-reset');
     resetBtn.type = 'button';
     resetBtn.textContent = '✕';
     resetBtn.title = '重置为当前时间';
@@ -387,55 +440,6 @@ function renderMain(container: HTMLElement, state: OverviewState, callbacks: Ove
       callbacks.onDatetimeChange?.('');
     };
   }
-
-  // ── Editor body ──
-  const body = appendDiv(composer, 'omm-composer-body');
-  const input = appendEl(body, 'div', 'omm-editor-host');
-  input.style.minHeight = '80px';
-
-  // Hidden file input for image attachment
-  const attachInput = appendEl(composer, 'input', 'omm-attach-input');
-  attachInput.type = 'file';
-  attachInput.accept = 'image/*';
-  attachInput.style.display = 'none';
-  attachInput.onchange = () => {
-    const file = attachInput.files?.[0];
-    if (file) callbacks.onAttachFile(file, input);
-    attachInput.value = '';
-  };
-
-  // ── Composer footer: image button + draft status + save ──
-  const footer = appendDiv(composer, 'omm-composer-footer');
-  const footerLeft = appendDiv(footer, 'omm-composer-footer-left');
-
-  // Image attach button
-  const attachBtn = appendEl(footerLeft, 'button', 'omm-attach-btn');
-  attachBtn.type = 'button';
-  attachBtn.title = '插入图片';
-  attachBtn.innerHTML = svgIconHtml('image');
-  attachBtn.onclick = () => attachInput.click();
-
-  // Draft auto-save status
-  const draftStatus = appendDiv(footerLeft, 'omm-draft-status');
-  appendEl(draftStatus, 'span', 'omm-draft-dot');
-  const statusText = appendEl(draftStatus, 'span', '');
-  statusText.textContent = state.draftStatus === 'saved'
-    ? '已自动保存' : state.draftStatus === 'saving'
-    ? '正在保存…' : '自动保存草稿';
-  if (state.draftStatus === 'saved') draftStatus.classList.add('saved');
-
-  // Save button (right-aligned)
-  const save = appendEl(footer, 'button', 'omm-save');
-  save.type = 'button';
-  save.innerHTML = `${svgIconHtml('save', 'omm-icon-sm')} 保存`;
-  const submit = (): void => {
-    const raw = callbacks.getComposerValue ? callbacks.getComposerValue() : '';
-    const content = raw.replace(/\r\n/gu, '\n').trim();
-    if (!content) return;
-    callbacks.onSave({ type: state.inputMode ?? 'memo', content });
-    if (callbacks.clearComposer) callbacks.clearComposer();
-  };
-  save.onclick = submit;
 
   // ── Progressive filter chip row ──
   // Shows when a date/range filter or tag filter is active.

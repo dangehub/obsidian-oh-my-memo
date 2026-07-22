@@ -19,6 +19,7 @@ related:
   - src/test/fakeVault.ts
   - src/settings/SettingsTab.ts
   - src/editor/native-editor.ts
+  - src/editor/editor-bridge.ts
   - src/constants.ts
   - tests/MarkdownRecordRepository.test.ts
   - tests/QuickMemoParser.test.ts
