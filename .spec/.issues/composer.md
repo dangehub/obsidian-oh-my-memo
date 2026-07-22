@@ -1,7 +1,7 @@
 ---
 concern: 收紧 composer 布局并移除冗余格式入口
 by: unknown
-status: open
+status: landed
 nodes: overview-timeline
 created: 2026-07-21T17:23:46.460Z
 ---
